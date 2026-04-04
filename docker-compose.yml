@@ -1,0 +1,11 @@
+name: exclusive-site
+
+services:
+  exclusive-site:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: exclusive-site
+    ports:
+      - "8080:80"
+    restart: unless-stopped
