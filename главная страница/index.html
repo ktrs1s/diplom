@@ -42,12 +42,6 @@
           <span></span>
           <span></span>
         </button>
-        <button class="header-icon site-header__mobile-search" type="button" aria-label="Поиск">
-          <svg viewBox="0 0 21 21" aria-hidden="true">
-            <circle cx="9" cy="9" r="6.25"></circle>
-            <path d="M13.75 13.75L19.25 19.25"></path>
-          </svg>
-        </button>
       </div>
 
       <a class="site-logo" href="#top" aria-label="EXCLUSIVE, перейти в начало">
@@ -63,23 +57,18 @@
       </nav>
 
       <div class="site-actions" aria-label="Действия пользователя">
-        <button class="header-icon site-actions__desktop-search" type="button" aria-label="Поиск">
-          <svg viewBox="0 0 21 21" aria-hidden="true">
-            <circle cx="9" cy="9" r="6.25"></circle>
-            <path d="M13.75 13.75L19.25 19.25"></path>
-          </svg>
-        </button>
-        <a class="header-icon" href="#footer" aria-label="Профиль">
+        <a class="header-icon" data-profile-link href="../auth/index.html" aria-label="Профиль">
           <svg viewBox="0 0 24 25" aria-hidden="true">
             <circle cx="12" cy="7.75" r="3.75"></circle>
             <path d="M5 20.5C5 16.91 8.134 14 12 14C15.866 14 19 16.91 19 20.5"></path>
           </svg>
         </a>
-        <a class="header-icon" href="#footer" aria-label="Корзина">
+        <a class="header-icon" id="header-cart-link" href="../cart/index.html" aria-label="Корзина">
           <svg viewBox="0 0 20 23" aria-hidden="true">
             <path d="M13.462 7.923V4.462C13.462 2.549 11.912 1 10 1C8.088 1 6.539 2.549 6.539 4.462V7.923"></path>
             <path d="M18.89 20.67C18.949 21.259 18.487 21.77 17.895 21.77H2.105C1.513 21.77 1.051 21.259 1.11 20.67L2.295 8.824C2.346 8.313 2.776 7.923 3.29 7.923H16.71C17.224 7.923 17.654 8.313 17.705 8.824L18.89 20.67Z"></path>
           </svg>
+          <span class="header-icon__badge" id="header-cart-badge" hidden>1</span>
         </a>
         <a class="header-icon" href="#footer" aria-label="Избранное">
           <svg viewBox="0 0 24 25" aria-hidden="true">
@@ -138,7 +127,13 @@
 
     <section class="home-section" id="categories">
       <div class="container-fluid">
-        <h2 class="section-title">Категории</h2>
+        <div class="section-heading">
+          <div class="section-heading__main">
+            <p class="section-kicker">Капсулы сезона</p>
+            <h2 class="section-title">Категории</h2>
+          </div>
+          <p class="section-lead">Собрали основные разделы магазина в одном ритме: от верхней одежды и обуви до мягких аксессуаров.</p>
+        </div>
         <div class="section-carousel section-carousel--categories" data-carousel>
           <div class="section-carousel__controls">
             <button class="section-carousel__control prev-btn" type="button" aria-label="Предыдущие категории">
@@ -161,7 +156,13 @@
 
     <section class="home-section" id="new-arrivals">
       <div class="container-fluid">
-        <h2 class="section-title">Новинки</h2>
+        <div class="section-heading">
+          <div class="section-heading__main">
+            <p class="section-kicker">Новая поставка</p>
+            <h2 class="section-title">Новинки</h2>
+          </div>
+          <p class="section-lead">Свежие модели EXCLUSIVE в спокойной палитре и мягких фактурах для повседневного гардероба.</p>
+        </div>
         <div class="section-carousel" data-carousel>
           <div class="section-carousel__controls">
             <button class="section-carousel__control prev-btn" type="button" aria-label="Предыдущие товары">
@@ -184,7 +185,13 @@
 
     <section class="home-section" id="popular">
       <div class="container-fluid">
-        <h2 class="section-title">Популярное</h2>
+        <div class="section-heading">
+          <div class="section-heading__main">
+            <p class="section-kicker">Выбор клиентов</p>
+            <h2 class="section-title">Популярное</h2>
+          </div>
+          <p class="section-lead">Самые востребованные силуэты и проверенные модели, которые уже стали базой для образов EXCLUSIVE.</p>
+        </div>
         <div class="section-carousel" data-carousel>
           <div class="section-carousel__controls">
             <button class="section-carousel__control prev-btn" type="button" aria-label="Предыдущие популярные товары">
@@ -207,7 +214,13 @@
 
     <section class="home-section" id="shoes">
       <div class="container-fluid">
-        <h2 class="section-title">Обувь</h2>
+        <div class="section-heading">
+          <div class="section-heading__main">
+            <p class="section-kicker">Акцентные пары</p>
+            <h2 class="section-title">Обувь</h2>
+          </div>
+          <p class="section-lead">Лаконичная база, мягкие формы и пары, которые легко собирают образ целиком.</p>
+        </div>
         <div class="section-carousel" data-carousel>
           <div class="section-carousel__controls">
             <button class="section-carousel__control prev-btn" type="button" aria-label="Предыдущая обувь">
@@ -230,12 +243,20 @@
 
     <section class="home-section" id="catalog">
       <div class="container-fluid">
-        <h2 class="section-title">Каталог</h2>
-        <div class="product-grid" id="catalog-grid"></div>
-        <div class="catalog-actions">
-          <a class="catalog-actions__button" href="../каталог/index.html">
-            <span class="button-label">Смотреть все</span>
-          </a>
+        <div class="catalog-preview">
+          <div class="section-heading section-heading--catalog">
+            <div class="section-heading__main">
+              <p class="section-kicker">Собранный гардероб</p>
+              <h2 class="section-title">Каталог</h2>
+            </div>
+            <p class="section-lead">Несколько актуальных моделей из ключевых разделов. Полный выбор и фильтры доступны в общем каталоге.</p>
+          </div>
+          <div class="product-grid" id="catalog-grid"></div>
+          <div class="catalog-actions">
+            <a class="catalog-actions__button" href="../каталог/index.html">
+              <span class="button-label">Смотреть все</span>
+            </a>
+          </div>
         </div>
       </div>
     </section>
@@ -294,7 +315,7 @@
               <path d="M4.5 7.5C4.631 13.414 7.62 17 12.855 17H13.152V13.612C15.06 13.802 16.503 15.194 17.082 17H19.78C19.039 14.311 17.09 12.826 15.875 12.262C17.09 11.561 18.793 9.857 19.2 7.5H16.75C16.219 9.416 14.647 11.12 13.152 11.284V7.5H10.702V14.128C9.188 13.749 7.278 11.913 7.194 7.5H4.5Z"></path>
             </svg>
           </a>
-          <a href="https://t.me/" target="_blank" rel="noreferrer" aria-label="Telegram">
+          <a data-telegram-link href="https://t.me/" target="_blank" rel="noreferrer" aria-label="Telegram">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M21.24 4.582L18.177 19.032C17.946 20.052 17.343 20.306 16.485 19.825L11.818 16.384L9.566 18.552C9.317 18.801 9.108 19.01 8.627 19.01L8.964 14.258L17.632 6.43C18.009 6.093 17.55 5.91 17.047 6.247L6.338 12.992L1.731 11.555C0.73 11.239 0.712 10.548 1.94 10.066L19.954 3.118C20.792 2.808 21.525 3.304 21.24 4.582Z"></path>
             </svg>
@@ -311,6 +332,10 @@
     </div>
   </footer>
 
-  <script src="script.js"></script>
+  <script src="../shared/site-config.js?v=20260502-auth-bot-2"></script>
+  <script src="../shared/store.js?v=20260502-auth-bot-2"></script>
+  <script src="../shared/catalog-store.js?v=20260503-db-1"></script>
+  <script src="../shared/auth.js?v=20260502-auth-bot-2"></script>
+  <script src="script.js?v=20260503-db-1"></script>
 </body>
 </html>

@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Конструктор витрины | EXCLUSIVE</title>
+  <meta name="description" content="Закрытая админка EXCLUSIVE для владельца: категории, товары, цены, размеры и изображение витрины.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="../главная страница/favicon.svg">
+  <link rel="stylesheet" href="styles.css?v=20260503-admin-builder-1">
+</head>
+<body class="admin-body">
+  <header class="admin-header">
+    <div class="admin-shell admin-header__row">
+      <a class="admin-logo" href="../главная страница/index.html">EXCLUSIVE</a>
+
+      <nav class="admin-nav" aria-label="Навигация">
+        <a href="../главная страница/index.html">Главная</a>
+        <a href="../каталог/index.html">Каталог</a>
+        <a href="../account/index.html">Кабинет</a>
+      </nav>
+
+      <div class="admin-header__meta">
+        <div class="admin-owner" id="admin-owner">Владелец</div>
+        <button class="admin-header__logout" id="admin-logout" type="button">Выйти</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="admin-page">
+    <div class="admin-shell">
+      <section class="admin-guard" id="admin-guard" hidden>
+        <p class="admin-guard__eyebrow">Закрытый раздел</p>
+        <h1 class="admin-guard__title" id="admin-guard-title">Нужен вход</h1>
+        <p class="admin-guard__text" id="admin-guard-text"></p>
+        <div class="admin-guard__actions">
+          <a class="admin-action admin-action--primary" id="admin-guard-primary" href="../auth/index.html">Войти</a>
+          <a class="admin-action" id="admin-guard-secondary" href="../главная страница/index.html">На главную</a>
+        </div>
+      </section>
+
+      <section class="admin-builder" id="admin-builder" hidden>
+        <section class="admin-hero">
+          <div class="admin-hero__copy">
+            <p class="admin-hero__eyebrow">Личный конструктор</p>
+            <h1 class="admin-hero__title">Конструктор витрины EXCLUSIVE</h1>
+            <p class="admin-hero__lead">
+              Здесь удобно собирать каталог: фильтровать категории, быстро находить товар, менять цену, размеры, фото и тексты без длинных списков.
+            </p>
+          </div>
+
+          <div class="admin-hero__aside">
+            <div class="admin-stat">
+              <span class="admin-stat__label">Категории</span>
+              <strong class="admin-stat__value" id="admin-category-count">0</strong>
+            </div>
+            <div class="admin-stat">
+              <span class="admin-stat__label">Товары</span>
+              <strong class="admin-stat__value" id="admin-product-count">0</strong>
+            </div>
+            <div class="admin-actions">
+              <button class="admin-action admin-action--primary" id="admin-new-product" type="button">Новый товар</button>
+              <button class="admin-action" id="admin-new-category" type="button">Новая категория</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="admin-workspace">
+          <aside class="admin-sidebar">
+            <section class="admin-panel admin-panel--sidebar">
+              <div class="admin-panel__head">
+                <div>
+                  <p class="admin-panel__eyebrow">Фильтр каталога</p>
+                  <h2 class="admin-panel__title">Категории</h2>
+                </div>
+              </div>
+              <div class="admin-filter-list" id="admin-category-filter"></div>
+            </section>
+
+            <section class="admin-panel admin-panel--sidebar">
+              <div class="admin-panel__head">
+                <div>
+                  <p class="admin-panel__eyebrow">Редактирование</p>
+                  <h2 class="admin-panel__title">Разделы</h2>
+                </div>
+              </div>
+              <div class="admin-category-list" id="admin-category-editor-list"></div>
+            </section>
+          </aside>
+
+          <section class="admin-canvas">
+            <div class="admin-panel admin-panel--canvas">
+              <div class="admin-toolbar">
+                <label class="admin-search">
+                  <span class="admin-search__label">Поиск по товарам</span>
+                  <input id="admin-product-search" type="search" placeholder="Название, артикул или категория">
+                </label>
+
+                <div class="admin-toolbar__summary">
+                  <p class="admin-toolbar__eyebrow">Вид каталога</p>
+                  <strong class="admin-toolbar__title" id="admin-toolbar-title">Все товары</strong>
+                  <span class="admin-toolbar__meta" id="admin-toolbar-meta">0 позиций</span>
+                </div>
+              </div>
+
+              <div class="admin-product-grid" id="admin-product-grid"></div>
+              <div class="admin-empty" id="admin-product-empty" hidden>По этому фильтру пока ничего нет.</div>
+            </div>
+          </section>
+
+          <aside class="admin-editor">
+            <section class="admin-panel admin-panel--editor">
+              <div class="admin-editor__tabs">
+                <button class="admin-editor__tab is-active" id="admin-mode-product" type="button">Товар</button>
+                <button class="admin-editor__tab" id="admin-mode-category" type="button">Категория</button>
+              </div>
+
+              <div class="admin-editor__content">
+                <section class="admin-editor-section" id="admin-product-section">
+                  <div class="admin-panel__head admin-panel__head--editor">
+                    <div>
+                      <p class="admin-panel__eyebrow">Карточка товара</p>
+                      <h2 class="admin-panel__title" id="admin-product-editor-title">Новый товар</h2>
+                    </div>
+                    <a class="admin-open-link" id="admin-open-product-link" href="#" target="_blank" rel="noreferrer" hidden>Открыть</a>
+                  </div>
+
+                  <form class="admin-form" id="admin-product-editor-form">
+                    <input id="admin-product-id" type="hidden" name="productId">
+
+                    <div class="admin-form__row">
+                      <label class="admin-field">
+                        <span>Категория</span>
+                        <select id="admin-product-category" name="categoryKey"></select>
+                      </label>
+
+                      <label class="admin-field">
+                        <span>Цена</span>
+                        <input id="admin-product-price" name="priceValue" type="number" min="0" step="1" placeholder="6990" required>
+                      </label>
+                    </div>
+
+                    <label class="admin-field admin-field--full">
+                      <span>Название товара</span>
+                      <textarea id="admin-product-title" name="title" rows="3" placeholder="Название товара" required></textarea>
+                    </label>
+
+                    <div class="admin-form__row">
+                      <label class="admin-field">
+                        <span>Артикул</span>
+                        <input id="admin-product-article" name="article" type="text" placeholder="EX-OUT-101-PALTOE">
+                      </label>
+
+                      <label class="admin-field">
+                        <span>Подпись</span>
+                        <input id="admin-product-label" name="label" type="text" placeholder="ПАЛЬТО">
+                      </label>
+                    </div>
+
+                    <div class="admin-form__row">
+                      <label class="admin-field">
+                        <span>Размеры</span>
+                        <input id="admin-product-sizes" name="sizes" type="text" placeholder="XS, S, M, L">
+                      </label>
+
+                      <label class="admin-field">
+                        <span>Цвета</span>
+                        <input id="admin-product-colors" name="colors" type="text" placeholder="Черный, Бежевый">
+                      </label>
+                    </div>
+
+                    <label class="admin-field admin-field--full">
+                      <span>Фото товара</span>
+                      <input id="admin-product-image" name="image" type="text" placeholder="/uploads/products/black-trench-01.webp">
+                    </label>
+
+                    <label class="admin-field admin-field--full">
+                      <span>Описание</span>
+                      <textarea id="admin-product-description" name="description" rows="4" placeholder="Короткое описание товара"></textarea>
+                    </label>
+
+                    <div class="admin-form__row">
+                      <label class="admin-field">
+                        <span>Фон 1</span>
+                        <input id="admin-product-palette-start" name="paletteStart" type="color" value="#f4eee6">
+                      </label>
+
+                      <label class="admin-field">
+                        <span>Фон 2</span>
+                        <input id="admin-product-palette-end" name="paletteEnd" type="color" value="#ccb39d">
+                      </label>
+                    </div>
+
+                    <div class="admin-form__actions">
+                      <button class="admin-action admin-action--primary" type="submit">Сохранить товар</button>
+                      <button class="admin-action" id="admin-product-reset" type="button">Очистить</button>
+                      <button class="admin-action admin-action--danger" id="admin-product-delete" type="button">Удалить</button>
+                    </div>
+                  </form>
+                </section>
+
+                <section class="admin-editor-section" id="admin-category-section" hidden>
+                  <div class="admin-panel__head admin-panel__head--editor">
+                    <div>
+                      <p class="admin-panel__eyebrow">Категория</p>
+                      <h2 class="admin-panel__title" id="admin-category-editor-title">Новая категория</h2>
+                    </div>
+                  </div>
+
+                  <form class="admin-form" id="admin-category-editor-form">
+                    <input id="admin-category-key" type="hidden" name="categoryKey">
+
+                    <label class="admin-field">
+                      <span>Название категории</span>
+                      <input id="admin-category-title" name="title" type="text" placeholder="Например, Платья" required>
+                    </label>
+
+                    <label class="admin-field">
+                      <span>Системный ключ</span>
+                      <input id="admin-category-key-visible" name="keyVisible" type="text" placeholder="Создастся автоматически" disabled>
+                    </label>
+
+                    <label class="admin-field admin-field--full">
+                      <span>Описание</span>
+                      <textarea id="admin-category-description" name="description" rows="4" placeholder="Короткое описание раздела"></textarea>
+                    </label>
+
+                    <div class="admin-form__row">
+                      <label class="admin-field">
+                        <span>Фон 1</span>
+                        <input id="admin-category-palette-start" name="paletteStart" type="color" value="#f4eee6">
+                      </label>
+
+                      <label class="admin-field">
+                        <span>Фон 2</span>
+                        <input id="admin-category-palette-end" name="paletteEnd" type="color" value="#ccb39d">
+                      </label>
+                    </div>
+
+                    <div class="admin-form__actions">
+                      <button class="admin-action admin-action--primary" type="submit">Сохранить категорию</button>
+                      <button class="admin-action" id="admin-category-reset" type="button">Очистить</button>
+                      <button class="admin-action admin-action--danger" id="admin-category-delete" type="button">Удалить</button>
+                    </div>
+                  </form>
+                </section>
+              </div>
+            </section>
+          </aside>
+        </section>
+      </section>
+    </div>
+  </main>
+
+  <script src="../shared/site-config.js?v=20260503-admin-builder-1"></script>
+  <script src="../shared/auth.js?v=20260503-admin-builder-1"></script>
+  <script src="../shared/catalog-store.js?v=20260503-admin-builder-1"></script>
+  <script src="script.js?v=20260503-admin-builder-1"></script>
+</body>
+</html>

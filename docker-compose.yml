@@ -1,11 +1,42 @@
 name: exclusive-site
 
 services:
-  exclusive-site:
+  web:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: exclusive-site
+    depends_on:
+      api:
+        condition: service_healthy
     ports:
       - "8080:80"
     restart: unless-stopped
+    volumes:
+      - ./uploads:/usr/share/nginx/html/uploads
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: exclusive-backend
+    environment:
+      EXCLUSIVE_API_HOST: 0.0.0.0
+      EXCLUSIVE_API_PORT: 9000
+      EXCLUSIVE_DEMO_PHONE: ${EXCLUSIVE_DEMO_PHONE:-+79999999999}
+      EXCLUSIVE_ADMIN_PHONES: ${EXCLUSIVE_ADMIN_PHONES:-+79953980243}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-exclusive_order_bot}
+      TELEGRAM_MANAGER_CHAT_IDS: ${TELEGRAM_MANAGER_CHAT_IDS:-}
+      TELEGRAM_MANAGER_USERNAMES: ${TELEGRAM_MANAGER_USERNAMES:-}
+    ports:
+      - "9000:9000"
+    restart: unless-stopped
+    volumes:
+      - ./backend/data:/app/backend/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9000/api/catalog', timeout=5)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 5s

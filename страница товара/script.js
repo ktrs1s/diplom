@@ -1,3 +1,4 @@
+const CART_PAGE_URL = "../cart/index.html";
 const DEFAULT_TELEGRAM_URL = "https://t.me/";
 const FALLBACK_RETURN_URL = "../каталог/index.html?page=outerwear";
 const params = new URLSearchParams(window.location.search);
@@ -102,6 +103,7 @@ const createStudioPhoto = ({ coatColor, accentColor, background, crop = "full", 
 };
 
 const productData = {
+  productId: "exclusive-trench-cropped-black",
   title: "Черный укороченный женский тренч с поясом и акцентным воротником",
   article: "EX-TR-2604-113",
   price: "6 990 ₽",
@@ -245,11 +247,14 @@ const sizesNode = document.getElementById("product-sizes");
 const colorsNode = document.getElementById("product-colors");
 const metaNode = document.getElementById("product-meta");
 const similarProductsNode = document.getElementById("similar-products");
+const breadcrumbSectionNode = document.getElementById("product-breadcrumb-section");
+const breadcrumbSectionSeparatorNode = document.getElementById("product-breadcrumb-section-separator");
 
 const productBackNode = document.getElementById("product-back");
 const favoriteButton = document.getElementById("toggle-favorite");
 const addToCartButton = document.getElementById("add-to-cart");
 const headerCartBadge = document.getElementById("header-cart-badge");
+const headerCartLink = document.getElementById("header-cart-link");
 const headerFavoriteBadge = document.getElementById("header-favorite-badge");
 const headerFavoriteLink = document.getElementById("header-favorite-link");
 
@@ -268,7 +273,17 @@ let activeImageIndex = 0;
 let activeSize = "S";
 let activeColor = "Черный";
 let isFavorite = false;
-let isInCart = false;
+
+const breadcrumbSectionTitles = {
+  outerwear: "Верхняя одежда",
+  jeans: "Джинсы",
+  trousers: "Брюки",
+  suits: "Костюмы",
+  knitwear: "Джемперы и свитеры",
+  tops: "Футболки, поло и лонгсливы",
+  shoes: "Обувь",
+  accessories: "Аксессуары",
+};
 
 const escapeHtml = (value) =>
   String(value)
@@ -276,6 +291,36 @@ const escapeHtml = (value) =>
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
+
+const renderBreadcrumbs = () => {
+  if (!breadcrumbSectionNode || !breadcrumbSectionSeparatorNode) {
+    return;
+  }
+
+  let sectionTitle = "";
+  let sectionHref = "";
+
+  try {
+    const returnUrl = new URL(productData.returnUrl || FALLBACK_RETURN_URL, window.location.href);
+    const pageKey = returnUrl.searchParams.get("page") || "";
+
+    if (breadcrumbSectionTitles[pageKey]) {
+      sectionTitle = breadcrumbSectionTitles[pageKey];
+      sectionHref = productData.returnUrl || FALLBACK_RETURN_URL;
+    }
+  } catch {
+    sectionTitle = "";
+  }
+
+  const hasSection = Boolean(sectionTitle);
+  breadcrumbSectionSeparatorNode.hidden = !hasSection;
+  breadcrumbSectionNode.hidden = !hasSection;
+
+  if (hasSection) {
+    breadcrumbSectionNode.textContent = sectionTitle;
+    breadcrumbSectionNode.setAttribute("href", sectionHref);
+  }
+};
 
 const setBadgeState = (node, isVisible) => {
   if (!node) {
@@ -292,10 +337,22 @@ const syncFavoriteState = () => {
   setBadgeState(headerFavoriteBadge, isFavorite);
 };
 
+const getCurrentProductHref = () => `../страница товара/index.html${window.location.search || ""}`;
+
+const getCurrentLineDescriptor = () => ({
+  productId: productData.productId,
+  size: activeSize,
+  color: activeColor,
+});
+
+const isSelectedVariantInCart = () => window.ExclusiveStore?.hasCartItem(getCurrentLineDescriptor()) || false;
+
 const syncCartState = () => {
-  setBadgeState(headerCartBadge, isInCart);
-  addToCartButton.textContent = isInCart ? `Добавлено: ${activeSize}` : "Добавить в корзину";
-  addToCartButton.setAttribute("aria-pressed", String(isInCart));
+  const itemInCart = isSelectedVariantInCart();
+
+  addToCartButton.textContent = itemInCart ? "ДОБАВЛЕНО В КОРЗИНУ" : "ДОБАВИТЬ В КОРЗИНУ";
+  addToCartButton.setAttribute("aria-pressed", String(itemInCart));
+  addToCartButton.classList.toggle("is-added", itemInCart);
 };
 
 const renderMenuGroups = () => {
@@ -503,6 +560,7 @@ const mountProduct = () => {
   }
 
   renderMenuGroups();
+  renderBreadcrumbs();
   renderThumbs();
   updateMainImage();
   renderSizes();
@@ -515,6 +573,11 @@ const mountProduct = () => {
     currentYearNode.textContent = String(new Date().getFullYear());
   }
 
+  if (headerCartLink) {
+    headerCartLink.setAttribute("href", CART_PAGE_URL);
+  }
+
+  window.ExclusiveStore?.mountCartBadge(headerCartBadge);
   syncFavoriteState();
   syncCartState();
 
@@ -541,6 +604,39 @@ const closeModal = () => {
   sizeModal.hidden = true;
 };
 
+const handleAddToCartClick = (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation();
+
+  if (!window.ExclusiveStore) {
+    return;
+  }
+
+  if (isSelectedVariantInCart()) {
+    syncCartState();
+    return;
+  }
+
+  const lineId = window.ExclusiveStore.createLineId(getCurrentLineDescriptor());
+
+  window.ExclusiveStore.addToCart({
+    lineId,
+    productId: productData.productId,
+    title: productData.title,
+    article: productData.article,
+    image: productData.images[0]?.src || "",
+    href: getCurrentProductHref(),
+    size: activeSize,
+    color: activeColor,
+    priceValue: window.ExclusiveStore.normalizePrice(productData.price),
+    priceLabel: productData.price,
+    quantity: 1,
+  });
+
+  syncCartState();
+};
+
 const initProductInteractions = () => {
   thumbsNode?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-thumb-index]");
@@ -563,9 +659,7 @@ const initProductInteractions = () => {
 
     activeSize = button.dataset.size || activeSize;
     renderSizes();
-    if (isInCart) {
-      syncCartState();
-    }
+    syncCartState();
   });
 
   colorsNode?.addEventListener("click", (event) => {
@@ -577,6 +671,7 @@ const initProductInteractions = () => {
 
     activeColor = button.dataset.color || activeColor;
     renderColors();
+    syncCartState();
   });
 
   favoriteButton?.addEventListener("click", () => {
@@ -584,10 +679,7 @@ const initProductInteractions = () => {
     syncFavoriteState();
   });
 
-  addToCartButton?.addEventListener("click", () => {
-    isInCart = !isInCart;
-    syncCartState();
-  });
+  addToCartButton?.addEventListener("click", handleAddToCartClick, { capture: true });
 
   productBackNode?.addEventListener("click", () => {
     if (window.history.length > 1) {
@@ -648,3 +740,4 @@ const initMobileMenu = () => {
 mountProduct();
 initProductInteractions();
 initMobileMenu();
+window.ExclusiveStore && window.addEventListener(window.ExclusiveStore.CART_EVENT, syncCartState);

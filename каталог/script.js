@@ -1,153 +1,9 @@
-const DEFAULT_TELEGRAM_URL = "https://t.me/";
 const PRODUCT_PAGE_URL = "../страница товара/index.html";
 const urlParams = new URLSearchParams(window.location.search);
 const pageQueryKey = urlParams.get("page");
 const ITEMS_PER_PAGE = 20;
 
-const pageConfigs = {
-  catalog: {
-    title: "Каталог",
-    description: "Каталог EXCLUSIVE: женская одежда, обувь и аксессуары.",
-  },
-  outerwear: {
-    title: "Верхняя одежда",
-    description: "Пальто, куртки, ветровки и джинсовые куртки EXCLUSIVE.",
-    sectionKey: "outerwear",
-  },
-  jeans: {
-    title: "Джинсы",
-    description: "Женские джинсы EXCLUSIVE в базовой и современной посадке.",
-    sectionKey: "jeans",
-  },
-  trousers: {
-    title: "Брюки",
-    description: "Брюки EXCLUSIVE для повседневных и более собранных образов.",
-    sectionKey: "trousers",
-  },
-  suits: {
-    title: "Костюмы",
-    description: "Спортивные, классические и летние костюмы EXCLUSIVE.",
-    sectionKey: "suits",
-  },
-  knitwear: {
-    title: "Джемперы и свитеры",
-    description: "Мягкий трикотаж EXCLUSIVE в спокойной сезонной палитре.",
-    sectionKey: "knitwear",
-  },
-  tops: {
-    title: "Футболки, поло и лонгсливы",
-    description: "Базовый верх EXCLUSIVE для ежедневного гардероба.",
-    sectionKey: "tops",
-  },
-  shoes: {
-    title: "Обувь",
-    description: "Летняя обувь, туфли, сапоги, ботильоны, кроссовки и кеды EXCLUSIVE.",
-    sectionKey: "shoes",
-  },
-  accessories: {
-    title: "Аксессуары",
-    description: "Шапки, кепки, платки, сумки и шарфы EXCLUSIVE.",
-    sectionKey: "accessories",
-  },
-};
-
-const sections = [
-  {
-    key: "outerwear",
-    title: "Верхняя одежда",
-    href: "index.html?page=outerwear",
-    palette: ["#efe3d8", "#c7ac95"],
-    subcategories: [
-      { key: "palto", title: "Пальто", itemLabel: "Пальто", count: 5, basePrice: 6990, step: 420, sizes: ["S", "M", "L"], swatch: "#d2b49c", palette: ["#f4e9df", "#ccb29c"] },
-      { key: "kurtki", title: "Куртки", itemLabel: "Куртка", count: 15, basePrice: 4590, step: 320, sizes: ["S", "M", "L"], swatch: "#8b5f49", palette: ["#d8c1b1", "#8b5f49"] },
-      { key: "vetrovki", title: "Ветровки", itemLabel: "Ветровка", count: 7, basePrice: 3490, step: 260, sizes: ["S", "M", "L"], swatch: "#c7b099", palette: ["#f0e4d6", "#c7b099"] },
-      { key: "denim-jackets", title: "Джинсовые куртки", itemLabel: "Джинсовая куртка", count: 3, basePrice: 3990, step: 340, sizes: ["S", "M"], swatch: "#7f9db9", palette: ["#dbe7ef", "#7f9db9"] },
-    ],
-  },
-  {
-    key: "jeans",
-    title: "Джинсы",
-    href: "index.html?page=jeans",
-    palette: ["#dce8ef", "#7c9db6"],
-    subcategories: [
-      { key: "all", title: "Все товары", itemLabel: "Джинсы", count: 20, basePrice: 2990, step: 250, sizes: ["25", "26", "27", "28", "29"], swatch: "#7798b4", palette: ["#dce8ef", "#7c9db6"] },
-    ],
-  },
-  {
-    key: "trousers",
-    title: "Брюки",
-    href: "index.html?page=trousers",
-    palette: ["#efe7da", "#b2a088"],
-    subcategories: [
-      { key: "all", title: "Все товары", itemLabel: "Брюки", count: 12, basePrice: 2690, step: 240, sizes: ["S", "M", "L"], swatch: "#9f9f9f", palette: ["#efede8", "#b6b6b6"] },
-    ],
-  },
-  {
-    key: "suits",
-    title: "Костюмы",
-    href: "index.html?page=suits",
-    palette: ["#e3e8d1", "#9daa70"],
-    subcategories: [
-      { key: "sport", title: "Спортивные костюмы", itemLabel: "Спортивный костюм", count: 4, basePrice: 3990, step: 300, sizes: ["S", "M", "L"], swatch: "#87936b", palette: ["#e5ead6", "#97a36d"] },
-      { key: "classic", title: "Классические костюмы", itemLabel: "Классический костюм", count: 4, basePrice: 4990, step: 360, sizes: ["S", "M", "L"], swatch: "#786157", palette: ["#e4d8d2", "#8d6f64"] },
-      { key: "summer", title: "Летние костюмы", itemLabel: "Летний костюм", count: 4, basePrice: 3790, step: 260, sizes: ["S", "M"], swatch: "#d3c0a2", palette: ["#f3ead8", "#ccb18e"] },
-    ],
-  },
-  {
-    key: "knitwear",
-    title: "Джемперы и свитеры",
-    href: "index.html?page=knitwear",
-    palette: ["#f4e7eb", "#caabb5"],
-    subcategories: [
-      { key: "all", title: "Все товары", itemLabel: "Джемпер", count: 12, basePrice: 2490, step: 220, sizes: ["ONE SIZE"], swatch: "#d7b4be", palette: ["#f6ecef", "#d8b3bf"] },
-    ],
-  },
-  {
-    key: "tops",
-    title: "Футболки, поло и лонгсливы",
-    href: "index.html?page=tops",
-    palette: ["#efe4da", "#bc9b87"],
-    subcategories: [
-      { key: "all", title: "Все товары", itemLabel: "Лонгслив", count: 12, basePrice: 1490, step: 130, sizes: ["S", "M", "L"], swatch: "#c39b84", palette: ["#f4e7df", "#c7a08c"] },
-    ],
-  },
-  {
-    key: "shoes",
-    title: "Обувь",
-    href: "index.html?page=shoes",
-    palette: ["#ece9e4", "#8b7c73"],
-    subcategories: [
-      { key: "summer-2026", title: "Лето 2026", itemLabel: "Летняя обувь", count: 28, basePrice: 2490, step: 160, sizes: ["36", "37", "38", "39", "40"], swatch: "#d0c0a8", palette: ["#f5eee3", "#d4c1a4"] },
-      { key: "heels", title: "Туфли", itemLabel: "Туфли", count: 35, basePrice: 4290, step: 200, sizes: ["36", "37", "38", "39", "40"], swatch: "#503f3a", palette: ["#e8ddd8", "#6e5b56"] },
-      { key: "boots", title: "Сапоги и ботильоны", itemLabel: "Сапоги", count: 30, basePrice: 4990, step: 240, sizes: ["36", "37", "38", "39", "40"], swatch: "#2f2f2f", palette: ["#e0dfdf", "#444444"] },
-      { key: "sneakers", title: "Кроссовки и кеды", itemLabel: "Кроссовки", count: 19, basePrice: 2890, step: 170, sizes: ["36", "37", "38", "39", "40"], swatch: "#f5f5f5", palette: ["#ffffff", "#dadada"] },
-    ],
-  },
-  {
-    key: "accessories",
-    title: "Аксессуары",
-    href: "index.html?page=accessories",
-    palette: ["#f0ebe4", "#a7927e"],
-    subcategories: [
-      { key: "hats", title: "Шапки", itemLabel: "Шапка", count: 10, basePrice: 1190, step: 100, sizes: ["ONE SIZE"], swatch: "#b6a08c", palette: ["#eee8dd", "#c4af99"] },
-      { key: "caps", title: "Кепки", itemLabel: "Кепка", count: 6, basePrice: 1390, step: 100, sizes: ["ONE SIZE"], swatch: "#9a8d83", palette: ["#ebe6df", "#b1a39a"] },
-      { key: "scarves-light", title: "Платки", itemLabel: "Платок", count: 7, basePrice: 1490, step: 110, sizes: ["ONE SIZE"], swatch: "#d0b6bf", palette: ["#f7edf1", "#d5b7c1"] },
-      { key: "bags", title: "Сумки", itemLabel: "Сумка", count: 18, basePrice: 2390, step: 180, sizes: ["ONE SIZE"], swatch: "#8f6e5a", palette: ["#ead8cc", "#9a775f"] },
-      { key: "scarves", title: "Шарфы", itemLabel: "Шарф", count: 11, basePrice: 1290, step: 100, sizes: ["ONE SIZE"], swatch: "#cabba5", palette: ["#f3eddf", "#c7b28e"] },
-    ],
-  },
-];
-
-const titleSuffixes = [
-  "из коллекции весна 2026",
-  "для базового гардероба",
-  "в мягком силуэте",
-  "в новой палитре сезона",
-];
-
-const sectionsMap = Object.fromEntries(sections.map((section) => [section.key, section]));
-const pageKey = pageQueryKey || document.body.dataset.page || "catalog";
-const pageConfig = pageConfigs[pageKey] || pageConfigs.catalog;
+const catalogApi = window.ExclusiveCatalog;
 
 const breadcrumbCatalogLinkNode = document.getElementById("breadcrumb-catalog-link");
 const breadcrumbCurrentSeparatorNode = document.getElementById("breadcrumb-current-separator");
@@ -160,11 +16,14 @@ const catalogProductsNode = document.getElementById("catalog-products");
 const catalogEmptyNode = document.getElementById("catalog-empty");
 const catalogPaginationNode = document.getElementById("catalog-pagination");
 const currentYearNode = document.getElementById("current-year");
+const headerCartBadge = document.getElementById("header-cart-badge");
+const profileLinks = document.querySelectorAll("[data-profile-link]");
 
 const headerToggle = document.getElementById("catalog-header-toggle");
 const drawerNode = document.getElementById("catalog-drawer");
 const drawerClose = document.getElementById("catalog-drawer-close");
 const overlayNode = document.getElementById("catalog-overlay");
+let catalogRefreshHandled = false;
 
 let activeFilter = urlParams.get("sub") || "all";
 let currentPageNumber = Number.parseInt(urlParams.get("pageNum") || "1", 10);
@@ -173,8 +32,6 @@ if (!Number.isFinite(currentPageNumber) || currentPageNumber < 1) {
   currentPageNumber = 1;
 }
 
-const moneyFormatter = new Intl.NumberFormat("ru-RU");
-
 const escapeHtml = (value) =>
   String(value)
     .replaceAll("&", "&amp;")
@@ -182,105 +39,84 @@ const escapeHtml = (value) =>
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
 
-const createDataUriSvg = (svg) => `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+const categories = catalogApi?.getCategories() || [];
+const categoriesMap = new Map(categories.map((category) => [category.key, category]));
+const currentCategory = categoriesMap.get(pageQueryKey || "") || null;
 
-const createProductPlaceholder = (label, palette) => {
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1200">
-      <defs>
-        <linearGradient id="catalog-bg" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="${palette[0]}"/>
-          <stop offset="100%" stop-color="${palette[1]}"/>
-        </linearGradient>
-      </defs>
-      <rect width="900" height="1200" fill="url(#catalog-bg)"/>
-      <circle cx="738" cy="170" r="124" fill="rgba(255,255,255,0.16)"/>
-      <circle cx="110" cy="1010" r="170" fill="rgba(255,255,255,0.1)"/>
-      <text x="50%" y="48%" text-anchor="middle" fill="#242424" font-family="Arial, sans-serif" font-size="62" font-weight="400">${label}</text>
-      <text x="50%" y="56%" text-anchor="middle" fill="#414141" font-family="Arial, sans-serif" font-size="28">замените на свое изображение</text>
-    </svg>
-  `;
-
-  return createDataUriSvg(svg);
-};
-
-const formatPrice = (value) => `${moneyFormatter.format(value)} ₽`;
-const getSectionTotal = (section) => section.subcategories.reduce((sum, subcategory) => sum + subcategory.count, 0);
-const hasNestedCategories = (section) => section.subcategories.length > 1;
-
-const allProductsCache = new Map();
-
-const buildSectionLink = (section, subcategoryKey = "all") => {
-  if (!subcategoryKey || subcategoryKey === "all") {
-    return section.href;
+const getCurrentProducts = () => {
+  if (!catalogApi) {
+    return [];
   }
 
-  return `${section.href}&sub=${subcategoryKey}`;
+  return currentCategory ? catalogApi.getProducts({ categoryKey: currentCategory.key }) : catalogApi.getProducts();
 };
 
-const buildProductLink = (section, subcategoryKey = "all") => {
-  const returnUrl = `../каталог/${buildSectionLink(section, subcategoryKey)}`;
-  return `${PRODUCT_PAGE_URL}?return=${encodeURIComponent(returnUrl)}`;
-};
+const getGroupedSubcategories = (categoryKey) => {
+  const products = catalogApi?.getProducts({ categoryKey }) || [];
+  const map = new Map();
 
-const getSectionProducts = (section) => {
-  if (allProductsCache.has(section.key)) {
-    return allProductsCache.get(section.key);
-  }
+  products.forEach((product) => {
+    const subKey = product.subKey || "all";
+    const subTitle = product.subTitle || "Все товары";
 
-  const products = section.subcategories.flatMap((subcategory) => {
-    const image = createProductPlaceholder(subcategory.itemLabel.toUpperCase(), subcategory.palette || section.palette);
+    if (subKey === "all") {
+      return;
+    }
 
-    return Array.from({ length: subcategory.count }, (_, index) => {
-      const number = String(index + 1).padStart(2, "0");
-      const suffix = titleSuffixes[index % titleSuffixes.length];
-
-      return {
-        id: `${section.key}-${subcategory.key}-${number}`,
-        sectionKey: section.key,
-        sectionTitle: section.title,
-        subKey: subcategory.key,
-        subTitle: subcategory.title,
-        title: `${subcategory.itemLabel} EXCLUSIVE ${number} ${suffix}`,
-        price: formatPrice(subcategory.basePrice + (index % 5) * subcategory.step),
-        sizes: subcategory.sizes.join(" · "),
-        swatch: subcategory.swatch,
-        image,
-        href: buildProductLink(section, hasNestedCategories(section) ? subcategory.key : "all"),
-      };
-    });
+    if (!map.has(subKey)) {
+      map.set(subKey, { key: subKey, title: subTitle });
+    }
   });
 
-  allProductsCache.set(section.key, products);
-  return products;
+  return [...map.values()];
 };
 
-const allCatalogProducts = sections.flatMap((section) => getSectionProducts(section));
-const getCurrentSection = () => (pageConfig.sectionKey ? sectionsMap[pageConfig.sectionKey] : null);
-const getCurrentSectionTitle = () => getCurrentSection()?.title || "";
+const buildCategoryUrl = (categoryKey = "", subKey = "all") => {
+  const params = new URLSearchParams();
 
-const normalizeFilter = (section) => {
-  if (!section || !hasNestedCategories(section)) {
+  if (categoryKey) {
+    params.set("page", categoryKey);
+  }
+
+  if (subKey && subKey !== "all") {
+    params.set("sub", subKey);
+  }
+
+  const query = params.toString();
+  return query ? `index.html?${query}` : "index.html";
+};
+
+const buildProductHref = (product) => {
+  const returnUrl = `../каталог/${buildCategoryUrl(product.categoryKey, product.subKey || "all")}`;
+  return `${PRODUCT_PAGE_URL}?id=${encodeURIComponent(product.id)}&return=${encodeURIComponent(returnUrl)}`;
+};
+
+const normalizeFilter = (subcategories) => {
+  if (!subcategories.length) {
     activeFilter = "all";
     return;
   }
 
-  const hasFilter = section.subcategories.some((subcategory) => subcategory.key === activeFilter);
-  if (!hasFilter) {
+  if (activeFilter === "all") {
+    return;
+  }
+
+  const valid = subcategories.some((subcategory) => subcategory.key === activeFilter);
+  if (!valid) {
     activeFilter = "all";
   }
 };
 
 const getFilteredProducts = () => {
-  const section = getCurrentSection();
+  const products = getCurrentProducts();
 
-  if (!section) {
+  if (!currentCategory) {
     activeFilter = "all";
-    return allCatalogProducts;
+    return products;
   }
 
-  normalizeFilter(section);
-  const products = getSectionProducts(section);
+  const subcategories = getGroupedSubcategories(currentCategory.key);
+  normalizeFilter(subcategories);
 
   if (activeFilter === "all") {
     return products;
@@ -382,45 +218,45 @@ const renderCatalogTree = (target) => {
     return;
   }
 
-  const currentSection = getCurrentSection();
-
   target.innerHTML = `
     <div class="catalog-tree">
-      ${sections
-        .map((section) => {
-          const isCurrentSection = currentSection?.key === section.key;
+      <a class="catalog-tree__link ${!currentCategory ? "is-active" : ""}" href="index.html">
+        <span>Все товары</span>
+      </a>
+      ${categories
+        .map((category) => {
+          const subcategories = getGroupedSubcategories(category.key);
+          const isCurrentCategory = currentCategory?.key === category.key;
 
-          if (!hasNestedCategories(section)) {
+          if (!subcategories.length) {
             return `
-              <a class="catalog-tree__link ${isCurrentSection ? "is-active" : ""}" href="${section.href}">
-                <span>${escapeHtml(section.title)}</span>
+              <a class="catalog-tree__link ${isCurrentCategory ? "is-active" : ""}" href="${buildCategoryUrl(category.key)}">
+                <span>${escapeHtml(category.title)}</span>
               </a>
             `;
           }
 
           return `
-            <details class="catalog-tree__details" ${isCurrentSection ? "open" : ""}>
-              <summary class="catalog-tree__summary ${isCurrentSection ? "is-active" : ""}">
-                <span>${escapeHtml(section.title)}</span>
+            <details class="catalog-tree__details" ${isCurrentCategory ? "open" : ""}>
+              <summary class="catalog-tree__summary ${isCurrentCategory ? "is-active" : ""}">
+                <span>${escapeHtml(category.title)}</span>
               </summary>
               <ul class="catalog-tree__sublist">
                 <li>
-                  <a class="${isCurrentSection && activeFilter === "all" ? "is-active" : ""}" href="${section.href}">
+                  <a class="${isCurrentCategory && activeFilter === "all" ? "is-active" : ""}" href="${buildCategoryUrl(category.key)}">
                     Все товары
                   </a>
                 </li>
-                ${section.subcategories
-                  .map((subcategory) => {
-                    const isCurrentSub = isCurrentSection && activeFilter === subcategory.key;
-
-                    return `
+                ${subcategories
+                  .map(
+                    (subcategory) => `
                       <li>
-                        <a class="${isCurrentSub ? "is-active" : ""}" href="${buildSectionLink(section, subcategory.key)}">
+                        <a class="${isCurrentCategory && activeFilter === subcategory.key ? "is-active" : ""}" href="${buildCategoryUrl(category.key, subcategory.key)}">
                           ${escapeHtml(subcategory.title)}
                         </a>
                       </li>
-                    `;
-                  })
+                    `,
+                  )
                   .join("")}
               </ul>
             </details>
@@ -433,20 +269,17 @@ const renderCatalogTree = (target) => {
 
 const renderProductCard = (product) => `
   <article class="catalog-card">
-    <a class="catalog-card__media" href="${product.href}">
+    <a class="catalog-card__media" href="${buildProductHref(product)}">
       <img src="${product.image}" alt="${escapeHtml(product.title)}" loading="lazy">
     </a>
     <div class="catalog-card__topline">
-      <span>${escapeHtml(product.subTitle)}</span>
-      <span>${escapeHtml(product.sizes)}</span>
+      <span>${escapeHtml(product.subTitle || product.categoryTitle)}</span>
+      <span>${escapeHtml(product.sizes.join(" · "))}</span>
     </div>
-    <a href="${product.href}">
+    <a href="${buildProductHref(product)}">
       <h3 class="catalog-card__title">${escapeHtml(product.title)}</h3>
     </a>
-    <div class="catalog-card__footer">
-      <span class="catalog-card__price">${product.price}</span>
-      <span class="catalog-card__swatch" style="--swatch: ${product.swatch};" aria-hidden="true"></span>
-    </div>
+    <span class="catalog-card__price">${product.priceLabel}</span>
   </article>
 `;
 
@@ -471,9 +304,8 @@ const renderProducts = () => {
 };
 
 const renderPageMeta = () => {
-  const title = pageConfig.title;
-  const description = pageConfig.description;
-  const currentSectionTitle = getCurrentSectionTitle();
+  const title = currentCategory?.title || "Каталог";
+  const description = currentCategory?.description || "Каталог EXCLUSIVE: женская одежда, обувь и аксессуары.";
 
   if (pageTitleNode) {
     pageTitleNode.textContent = title;
@@ -494,47 +326,56 @@ const renderPageMeta = () => {
     ogDescriptionNode.setAttribute("content", description);
   }
 
+  document.title = `${title} | EXCLUSIVE`;
+
   if (breadcrumbCatalogLinkNode) {
     breadcrumbCatalogLinkNode.setAttribute("href", "index.html");
   }
 
   if (breadcrumbCurrentSeparatorNode && breadcrumbCurrentNode) {
-    const hasCurrentSection = Boolean(currentSectionTitle);
-    breadcrumbCurrentSeparatorNode.hidden = !hasCurrentSection;
-    breadcrumbCurrentNode.hidden = !hasCurrentSection;
-    breadcrumbCurrentNode.textContent = hasCurrentSection ? currentSectionTitle : "";
+    const hasCurrentCategory = Boolean(currentCategory);
+    breadcrumbCurrentSeparatorNode.hidden = !hasCurrentCategory;
+    breadcrumbCurrentNode.hidden = !hasCurrentCategory;
+    breadcrumbCurrentNode.textContent = hasCurrentCategory ? currentCategory.title : "";
   }
-
-  document.title = `${title} | EXCLUSIVE`;
 };
 
 const closeDrawer = () => {
-  document.body.classList.remove("drawer-open");
-  if (overlayNode) {
-    overlayNode.hidden = true;
-  }
-  if (drawerNode) {
-    drawerNode.setAttribute("aria-hidden", "true");
-  }
-};
-
-const openDrawer = () => {
-  document.body.classList.add("drawer-open");
-  if (overlayNode) {
-    overlayNode.hidden = false;
-  }
-  if (drawerNode) {
-    drawerNode.setAttribute("aria-hidden", "false");
-  }
-};
-
-const initDrawer = () => {
   if (!drawerNode || !overlayNode) {
     return;
   }
 
-  headerToggle?.addEventListener("click", openDrawer);
-  drawerClose?.addEventListener("click", closeDrawer);
+  drawerNode.classList.remove("is-open");
+  drawerNode.setAttribute("aria-hidden", "true");
+  overlayNode.hidden = true;
+  document.body.classList.remove("drawer-open");
+};
+
+const openDrawer = () => {
+  if (!drawerNode || !overlayNode) {
+    return;
+  }
+
+  drawerNode.classList.add("is-open");
+  drawerNode.setAttribute("aria-hidden", "false");
+  overlayNode.hidden = false;
+  document.body.classList.add("drawer-open");
+};
+
+const initDrawer = () => {
+  if (!headerToggle || !drawerNode || !drawerClose || !overlayNode) {
+    return;
+  }
+
+  headerToggle.addEventListener("click", () => {
+    if (drawerNode.classList.contains("is-open")) {
+      closeDrawer();
+    } else {
+      openDrawer();
+    }
+  });
+
+  drawerClose.addEventListener("click", closeDrawer);
   overlayNode.addEventListener("click", closeDrawer);
 
   drawerNode.querySelectorAll("a").forEach((link) => {
@@ -542,20 +383,32 @@ const initDrawer = () => {
   });
 };
 
-const initPage = () => {
-  renderPageMeta();
-  renderCatalogTree(catalogTreeNode);
-  renderCatalogTree(catalogDrawerTreeNode);
-  renderProducts();
-  initDrawer();
-
+const mountFooter = () => {
   if (currentYearNode) {
     currentYearNode.textContent = String(new Date().getFullYear());
   }
 
   document.querySelectorAll("[data-telegram-link]").forEach((link) => {
-    link.setAttribute("href", DEFAULT_TELEGRAM_URL);
+    link.setAttribute("href", window.ExclusiveSiteConfig?.getTelegramBotUrl?.() || "https://t.me/");
   });
 };
 
-initPage();
+renderPageMeta();
+renderCatalogTree(catalogTreeNode);
+renderCatalogTree(catalogDrawerTreeNode);
+renderProducts();
+initDrawer();
+mountFooter();
+window.ExclusiveStore?.mountCartBadge(headerCartBadge);
+window.ExclusiveAuth?.mountProfileLinks(profileLinks);
+window.addEventListener(window.ExclusiveAuth?.AUTH_EVENT || "exclusive:authchange", () => {
+  window.ExclusiveAuth?.mountProfileLinks(profileLinks);
+});
+window.addEventListener(window.ExclusiveCatalog?.CATALOG_EVENT || "exclusive:catalogchange", () => {
+  if (catalogRefreshHandled) {
+    return;
+  }
+
+  catalogRefreshHandled = true;
+  window.location.reload();
+});

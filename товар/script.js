@@ -1,3 +1,4 @@
+const CART_PAGE_URL = "../cart/index.html";
 const DEFAULT_TELEGRAM_URL = "https://t.me/";
 const FALLBACK_RETURN_URL = "../каталог/index.html?page=outerwear";
 const params = new URLSearchParams(window.location.search);
@@ -102,6 +103,7 @@ const createStudioPhoto = ({ coatColor, accentColor, background, crop = "full", 
 };
 
 const productData = {
+  productId: "exclusive-trench-cropped-black",
   title: "Черный укороченный женский тренч с поясом и акцентным воротником",
   article: "EX-TR-2604-113",
   price: "6 990 ₽",
@@ -245,10 +247,14 @@ const sizesNode = document.getElementById("product-sizes");
 const colorsNode = document.getElementById("product-colors");
 const metaNode = document.getElementById("product-meta");
 const similarProductsNode = document.getElementById("similar-products");
+const breadcrumbSectionNode = document.getElementById("product-breadcrumb-section");
+const breadcrumbSectionSeparatorNode = document.getElementById("product-breadcrumb-section-separator");
 
 const productBackNode = document.getElementById("product-back");
 const favoriteButton = document.getElementById("toggle-favorite");
 const addToCartButton = document.getElementById("add-to-cart");
+const headerCartBadge = document.getElementById("header-cart-badge");
+const headerCartLink = document.getElementById("header-cart-link");
 
 const sizeGuideOpenButton = document.getElementById("size-guide-open");
 const sizeModal = document.getElementById("size-modal");
@@ -265,12 +271,71 @@ let activeImageIndex = 0;
 let activeSize = "S";
 let activeColor = "Черный";
 
+const breadcrumbSectionTitles = {
+  outerwear: "Верхняя одежда",
+  jeans: "Джинсы",
+  trousers: "Брюки",
+  suits: "Костюмы",
+  knitwear: "Джемперы и свитеры",
+  tops: "Футболки, поло и лонгсливы",
+  shoes: "Обувь",
+  accessories: "Аксессуары",
+};
+
 const escapeHtml = (value) =>
   String(value)
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
+
+const renderBreadcrumbs = () => {
+  if (!breadcrumbSectionNode || !breadcrumbSectionSeparatorNode) {
+    return;
+  }
+
+  let sectionTitle = "";
+  let sectionHref = "";
+
+  try {
+    const returnUrl = new URL(productData.returnUrl || FALLBACK_RETURN_URL, window.location.href);
+    const pageKey = returnUrl.searchParams.get("page") || "";
+
+    if (breadcrumbSectionTitles[pageKey]) {
+      sectionTitle = breadcrumbSectionTitles[pageKey];
+      sectionHref = productData.returnUrl || FALLBACK_RETURN_URL;
+    }
+  } catch {
+    sectionTitle = "";
+  }
+
+  const hasSection = Boolean(sectionTitle);
+  breadcrumbSectionSeparatorNode.hidden = !hasSection;
+  breadcrumbSectionNode.hidden = !hasSection;
+
+  if (hasSection) {
+    breadcrumbSectionNode.textContent = sectionTitle;
+    breadcrumbSectionNode.setAttribute("href", sectionHref);
+  }
+};
+
+const getCurrentProductHref = () => `../товар/index.html${window.location.search || ""}`;
+
+const getCurrentLineDescriptor = () => ({
+  productId: productData.productId,
+  size: activeSize,
+  color: activeColor,
+});
+
+const syncCartState = () => {
+  const itemInCart = window.ExclusiveStore?.hasCartItem(getCurrentLineDescriptor()) || false;
+
+  if (addToCartButton) {
+    addToCartButton.textContent = itemInCart ? "ДОБАВЛЕНО В КОРЗИНУ" : "ДОБАВИТЬ В КОРЗИНУ";
+    addToCartButton.setAttribute("aria-pressed", String(itemInCart));
+    addToCartButton.classList.toggle("is-added", itemInCart);
+  }
+};
 
 const renderMenuGroups = () => {
   if (!menuGroupsNode) {
@@ -477,6 +542,7 @@ const mountProduct = () => {
   }
 
   renderMenuGroups();
+  renderBreadcrumbs();
   renderThumbs();
   updateMainImage();
   renderSizes();
@@ -488,6 +554,13 @@ const mountProduct = () => {
   if (currentYearNode) {
     currentYearNode.textContent = String(new Date().getFullYear());
   }
+
+  if (headerCartLink) {
+    headerCartLink.setAttribute("href", CART_PAGE_URL);
+  }
+
+  window.ExclusiveStore?.mountCartBadge(headerCartBadge);
+  syncCartState();
 
   document.querySelectorAll("[data-telegram-link]").forEach((link) => {
     link.setAttribute("href", DEFAULT_TELEGRAM_URL);
@@ -512,6 +585,39 @@ const closeModal = () => {
   sizeModal.hidden = true;
 };
 
+const handleAddToCartClick = (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation();
+
+  if (!window.ExclusiveStore) {
+    return;
+  }
+
+  if (window.ExclusiveStore.hasCartItem(getCurrentLineDescriptor())) {
+    syncCartState();
+    return;
+  }
+
+  const lineId = window.ExclusiveStore.createLineId(getCurrentLineDescriptor());
+
+  window.ExclusiveStore.addToCart({
+    lineId,
+    productId: productData.productId,
+    title: productData.title,
+    article: productData.article,
+    image: productData.images[0]?.src || "",
+    href: getCurrentProductHref(),
+    size: activeSize,
+    color: activeColor,
+    priceValue: window.ExclusiveStore.normalizePrice(productData.price),
+    priceLabel: productData.price,
+    quantity: 1,
+  });
+
+  syncCartState();
+};
+
 const initProductInteractions = () => {
   thumbsNode?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-thumb-index]");
@@ -534,6 +640,7 @@ const initProductInteractions = () => {
 
     activeSize = button.dataset.size || activeSize;
     renderSizes();
+    syncCartState();
   });
 
   colorsNode?.addEventListener("click", (event) => {
@@ -545,15 +652,14 @@ const initProductInteractions = () => {
 
     activeColor = button.dataset.color || activeColor;
     renderColors();
+    syncCartState();
   });
 
   favoriteButton?.addEventListener("click", () => {
     favoriteButton.classList.toggle("is-active");
   });
 
-  addToCartButton?.addEventListener("click", () => {
-    addToCartButton.textContent = `Добавлено: ${activeSize}`;
-  });
+  addToCartButton?.addEventListener("click", handleAddToCartClick, { capture: true });
 
   productBackNode?.addEventListener("click", () => {
     if (window.history.length > 1) {
@@ -614,3 +720,4 @@ const initMobileMenu = () => {
 mountProduct();
 initProductInteractions();
 initMobileMenu();
+window.ExclusiveStore && window.addEventListener(window.ExclusiveStore.CART_EVENT, syncCartState);

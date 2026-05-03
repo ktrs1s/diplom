@@ -28,12 +28,6 @@
           <span></span>
           <span></span>
         </button>
-        <button class="header-icon site-header__mobile-search" type="button" aria-label="Поиск">
-          <svg viewBox="0 0 21 21" aria-hidden="true">
-            <circle cx="9" cy="9" r="6.25"></circle>
-            <path d="M13.75 13.75L19.25 19.25"></path>
-          </svg>
-        </button>
       </div>
 
       <a class="site-logo" href="../главная страница/index.html#top" aria-label="EXCLUSIVE, перейти в начало">
@@ -49,19 +43,13 @@
       </nav>
 
       <div class="site-actions" aria-label="Действия пользователя">
-        <button class="header-icon site-actions__desktop-search" type="button" aria-label="Поиск">
-          <svg viewBox="0 0 21 21" aria-hidden="true">
-            <circle cx="9" cy="9" r="6.25"></circle>
-            <path d="M13.75 13.75L19.25 19.25"></path>
-          </svg>
-        </button>
-        <a class="header-icon" href="../главная страница/index.html#footer" aria-label="Профиль">
+        <a class="header-icon" data-profile-link href="../auth/index.html" aria-label="Профиль">
           <svg viewBox="0 0 24 25" aria-hidden="true">
             <circle cx="12" cy="7.75" r="3.75"></circle>
             <path d="M5 20.5C5 16.91 8.134 14 12 14C15.866 14 19 16.91 19 20.5"></path>
           </svg>
         </a>
-        <a class="header-icon header-icon--indicator" id="header-cart-link" href="../главная страница/index.html#footer" aria-label="Корзина">
+        <a class="header-icon header-icon--indicator" id="header-cart-link" href="../cart/index.html" aria-label="Корзина">
           <svg viewBox="0 0 20 23" aria-hidden="true">
             <path d="M13.462 7.923V4.462C13.462 2.549 11.912 1 10 1C8.088 1 6.539 2.549 6.539 4.462V7.923"></path>
             <path d="M18.89 20.67C18.949 21.259 18.487 21.77 17.895 21.77H2.105C1.513 21.77 1.051 21.259 1.11 20.67L2.295 8.824C2.346 8.313 2.776 7.923 3.29 7.923H16.71C17.224 7.923 17.654 8.313 17.705 8.824L18.89 20.67Z"></path>
@@ -105,12 +93,13 @@
   <main class="product-page" id="top">
     <section class="product-view">
       <div class="container-fluid">
-        <button class="product-back" id="product-back" type="button">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M14.5 6L8.5 12L14.5 18"></path>
-          </svg>
-          <span>Назад</span>
-        </button>
+        <nav class="product-breadcrumbs" aria-label="Хлебные крошки">
+          <a href="../главная страница/index.html">Главная</a>
+          <span>/</span>
+          <a href="../каталог/index.html">Каталог</a>
+          <span id="product-breadcrumb-section-separator" hidden>/</span>
+          <a id="product-breadcrumb-section" href="#" hidden></a>
+        </nav>
 
         <div class="product-layout">
           <div class="product-gallery" id="product-thumbs" aria-label="Миниатюры товара"></div>
@@ -142,7 +131,7 @@
             </div>
 
             <div class="product-actions-block">
-              <button class="product-actions-block__cart" id="add-to-cart" type="button">Добавить в корзину</button>
+              <button class="product-actions-block__cart" id="add-to-cart" type="button">ДОБАВИТЬ В КОРЗИНУ</button>
               <button class="product-actions-block__favorite" id="toggle-favorite" type="button" aria-label="Добавить в избранное">
                 <svg viewBox="0 0 24 25" aria-hidden="true">
                   <path d="M12 20.5L4.9 13.4C3.7 12.2 3 10.64 3 8.97C3 5.56 7.04 3.83 9.5 6.15L12 8.5L14.5 6.15C16.96 3.83 21 5.56 21 8.97C21 10.64 20.3 12.2 19.1 13.4L12 20.5"></path>
@@ -247,6 +236,10 @@
     </div>
   </footer>
 
-  <script src="script.js"></script>
+  <script src="../shared/site-config.js?v=20260502-auth-bot-2"></script>
+  <script src="../shared/store.js?v=20260502-auth-bot-2"></script>
+  <script src="../shared/catalog-store.js?v=20260503-db-1"></script>
+  <script src="../shared/auth.js?v=20260502-auth-bot-2"></script>
+  <script src="../shared/product-page.js?v=20260503-db-1"></script>
 </body>
 </html>

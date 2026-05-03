@@ -1,6 +1,9 @@
 .git
 .gitignore
-Dockerfile
-docker-compose.yml
-README.md
 .DS_Store
+.pycache/
+**/__pycache__/
+backend/backend.log
+backend/data/*.sqlite3-shm
+backend/data/*.sqlite3-wal
+.env

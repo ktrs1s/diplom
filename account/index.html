@@ -3,24 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Товар | EXCLUSIVE</title>
-  <meta name="description" content="Карточка товара EXCLUSIVE: галерея, размеры, состав, уход и похожие товары.">
+  <title>Личный кабинет | EXCLUSIVE</title>
+  <meta name="description" content="Личный кабинет EXCLUSIVE: личные данные, телефон и заказы.">
   <meta property="og:type" content="website">
   <meta property="og:locale" content="ru_RU">
-  <meta property="og:title" content="Товар | EXCLUSIVE">
-  <meta property="og:description" content="Детальная страница товара EXCLUSIVE с галереей, размерами, характеристиками и похожими моделями.">
+  <meta property="og:title" content="Личный кабинет | EXCLUSIVE">
+  <meta property="og:description" content="Личные данные и история заказов EXCLUSIVE.">
   <meta property="og:image" content="../главная страница/cover.svg">
-  <meta property="og:site_name" content="EXCLUSIVE">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="../главная страница/favicon.svg">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="../главная страница/styles.css?v=20260503-admin-builder-1">
+  <link rel="stylesheet" href="styles.css?v=20260503-admin-builder-1">
 </head>
-<body>
+<body class="account-body">
   <div class="mobile-menu-backdrop" id="mobile-menu-backdrop" hidden></div>
 
-  <header class="site-header is-solid" id="site-header">
+  <header class="site-header" id="site-header">
     <div class="container-fluid site-header__row">
       <div class="site-header__mobile-left">
         <button class="header-icon menu-toggle" id="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu" aria-label="Открыть меню">
@@ -43,7 +43,7 @@
       </nav>
 
       <div class="site-actions" aria-label="Действия пользователя">
-        <a class="header-icon" data-profile-link href="../auth/index.html" aria-label="Профиль">
+        <a class="header-icon" data-profile-link href="../account/index.html" aria-label="Профиль">
           <svg viewBox="0 0 24 25" aria-hidden="true">
             <circle cx="12" cy="7.75" r="3.75"></circle>
             <path d="M5 20.5C5 16.91 8.134 14 12 14C15.866 14 19 16.91 19 20.5"></path>
@@ -89,97 +89,60 @@
     </div>
   </aside>
 
-  <main class="product-page" id="top">
-    <section class="product-view">
+  <main class="account-main" id="top">
+    <section class="account-hero">
       <div class="container-fluid">
-        <nav class="product-breadcrumbs" aria-label="Хлебные крошки">
-          <a href="../главная страница/index.html">Главная</a>
-          <span>/</span>
-          <a href="../каталог/index.html">Каталог</a>
-          <span id="product-breadcrumb-section-separator" hidden>/</span>
-          <a id="product-breadcrumb-section" href="#" hidden></a>
-        </nav>
-
-        <div class="product-layout">
-          <div class="product-gallery" id="product-thumbs" aria-label="Миниатюры товара"></div>
-
-          <div class="product-stage">
-            <div class="product-stage__frame">
-              <img class="product-stage__image" id="product-main-image" src="" alt="">
-            </div>
+        <div class="account-shell">
+          <div class="account-heading">
+            <p class="account-heading__eyebrow">Личный кабинет</p>
+            <h1 class="account-heading__title">Личные данные</h1>
           </div>
 
-          <section class="product-info" aria-labelledby="product-title">
-            <p class="product-info__article">Артикул: <span id="product-article"></span></p>
-            <h1 class="product-info__title" id="product-title"></h1>
-            <div class="product-info__price" id="product-price"></div>
+          <div class="account-notice" id="account-notice" hidden></div>
 
-            <div class="product-option">
-              <div class="product-option__row">
-                <span class="product-option__label">Размер</span>
-                <button class="product-option__link" id="size-guide-open" type="button">Таблица размеров</button>
+          <div class="account-grid">
+            <section class="account-panel" aria-labelledby="account-form-title">
+              <div class="account-panel__header">
+                <h2 class="account-panel__title" id="account-form-title">Профиль</h2>
+                <div class="account-panel__actions">
+                  <a class="account-panel__admin-link" id="account-admin-link" href="../admin/index.html" hidden>Открыть админку</a>
+                  <button class="account-panel__logout" id="logout-button" type="button">Выйти</button>
+                </div>
               </div>
-              <div class="product-sizes" id="product-sizes"></div>
-            </div>
 
-            <div class="product-option">
-              <div class="product-option__row">
-                <span class="product-option__label">Цвет</span>
+              <form class="account-form" id="account-form" novalidate>
+                <label class="account-field">
+                  <span>Имя</span>
+                  <input id="account-first-name" name="firstName" type="text" autocomplete="given-name" required>
+                </label>
+
+                <label class="account-field">
+                  <span>Фамилия</span>
+                  <input id="account-last-name" name="lastName" type="text" autocomplete="family-name" required>
+                </label>
+
+                <label class="account-field">
+                  <span>Номер телефона</span>
+                  <input id="account-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" required>
+                </label>
+
+                <button class="account-primary" type="submit">Сохранить изменения</button>
+              </form>
+            </section>
+
+            <section class="account-panel" aria-labelledby="account-orders-title">
+              <div class="account-panel__header">
+                <h2 class="account-panel__title" id="account-orders-title">Заказы</h2>
               </div>
-              <div class="product-colors" id="product-colors"></div>
-            </div>
 
-            <div class="product-actions-block">
-              <button class="product-actions-block__cart" id="add-to-cart" type="button">ДОБАВИТЬ В КОРЗИНУ</button>
-              <button class="product-actions-block__favorite" id="toggle-favorite" type="button" aria-label="Добавить в избранное">
-                <svg viewBox="0 0 24 25" aria-hidden="true">
-                  <path d="M12 20.5L4.9 13.4C3.7 12.2 3 10.64 3 8.97C3 5.56 7.04 3.83 9.5 6.15L12 8.5L14.5 6.15C16.96 3.83 21 5.56 21 8.97C21 10.64 20.3 12.2 19.1 13.4L12 20.5"></path>
-                </svg>
-              </button>
-            </div>
-
-            <div class="product-meta" id="product-meta"></div>
-          </section>
+              <div class="account-orders" id="account-orders"></div>
+              <div class="account-empty" id="account-empty-orders" hidden>Пока нет оформленных заказов.</div>
+            </section>
+          </div>
         </div>
       </div>
     </section>
-
-    <section class="similar-products" aria-labelledby="similar-products-title">
-      <div class="container-fluid">
-        <h2 class="similar-products__title" id="similar-products-title">Похожие товары</h2>
-        <div class="similar-products__grid" id="similar-products"></div>
-      </div>
-    </section>
   </main>
-
-  <div class="size-modal" id="size-modal" hidden>
-    <div class="size-modal__backdrop" id="size-modal-backdrop"></div>
-    <div class="size-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="size-modal-title">
-      <div class="size-modal__header">
-        <h2 class="size-modal__title" id="size-modal-title">Таблица размеров</h2>
-        <button class="size-modal__close" id="size-modal-close" type="button" aria-label="Закрыть таблицу размеров">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M6 6L18 18"></path>
-            <path d="M18 6L6 18"></path>
-          </svg>
-        </button>
-      </div>
-      <div class="size-modal__body">
-        <table class="size-modal__table" id="size-table">
-          <thead>
-            <tr>
-              <th>INT</th>
-              <th>RU</th>
-              <th>Обхват груди</th>
-              <th>Обхват талии</th>
-              <th>Обхват бедер</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
 
   <footer class="site-footer" id="footer">
     <div class="container-fluid site-footer__grid">
@@ -235,10 +198,11 @@
     </div>
   </footer>
 
-  <script src="../shared/site-config.js?v=20260502-auth-bot-2"></script>
-  <script src="../shared/store.js?v=20260502-auth-bot-2"></script>
-  <script src="../shared/catalog-store.js?v=20260503-db-1"></script>
-  <script src="../shared/auth.js?v=20260502-auth-bot-2"></script>
-  <script src="../shared/product-page.js?v=20260503-db-1"></script>
+  <script src="../shared/site-config.js?v=20260503-admin-builder-1"></script>
+  <script src="../shared/store.js?v=20260503-admin-builder-1"></script>
+  <script src="../shared/catalog-store.js?v=20260503-admin-builder-1"></script>
+  <script src="../shared/auth.js?v=20260503-admin-builder-1"></script>
+  <script src="../shared/checkout.js?v=20260503-admin-builder-1"></script>
+  <script src="script.js?v=20260503-admin-builder-1"></script>
 </body>
 </html>

@@ -3,25 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Каталог | EXCLUSIVE</title>
-  <meta id="page-meta-description" name="description" content="Каталог EXCLUSIVE: женская одежда, обувь и аксессуары.">
+  <title>Корзина | EXCLUSIVE</title>
+  <meta name="description" content="Корзина EXCLUSIVE: выбранные товары, количество, итог заказа и оформление через менеджера.">
   <meta property="og:type" content="website">
   <meta property="og:locale" content="ru_RU">
-  <meta property="og:title" content="Каталог | EXCLUSIVE">
-  <meta property="og:description" content="Каталог EXCLUSIVE: женская одежда, обувь и аксессуары.">
+  <meta property="og:title" content="Корзина | EXCLUSIVE">
+  <meta property="og:description" content="Корзина EXCLUSIVE: выбранные товары, количество, итог заказа и оформление через менеджера.">
   <meta property="og:image" content="../главная страница/cover.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="../главная страница/favicon.svg">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body data-page="catalog">
-  <div class="catalog-overlay" id="catalog-overlay" hidden></div>
+<body data-page="cart">
+  <div class="cart-overlay" id="cart-overlay" hidden></div>
 
-  <header class="catalog-header">
-    <div class="container catalog-header__row">
-      <button class="catalog-header__toggle" id="catalog-header-toggle" type="button" aria-label="Открыть меню каталога">
+  <header class="cart-header">
+    <div class="container cart-header__row">
+      <button class="cart-header__toggle" id="cart-header-toggle" type="button" aria-label="Открыть меню">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M4 7H20"></path>
           <path d="M4 12H20"></path>
@@ -31,22 +31,22 @@
 
       <a class="site-logo" href="../главная страница/index.html">EXCLUSIVE</a>
 
-      <nav class="catalog-nav" aria-label="Основная навигация">
-        <a class="is-active" href="index.html">Каталог</a>
+      <nav class="cart-nav" aria-label="Основная навигация">
+        <a href="../каталог/index.html">Каталог</a>
         <a href="../главная страница/index.html#new-arrivals">Новинки</a>
         <a href="../главная страница/index.html#popular">Хиты продаж</a>
         <a href="../главная страница/index.html#buyers">Покупателям</a>
         <a href="../главная страница/index.html#footer">Блог</a>
       </nav>
 
-      <div class="catalog-actions" aria-label="Действия пользователя">
+      <div class="cart-actions" aria-label="Действия пользователя">
         <a class="header-icon" data-profile-link href="../auth/index.html" aria-label="Профиль">
           <svg viewBox="0 0 24 25" aria-hidden="true">
             <circle cx="12" cy="7.75" r="3.75"></circle>
             <path d="M5 20.5C5 16.91 8.134 14 12 14C15.866 14 19 16.91 19 20.5"></path>
           </svg>
         </a>
-        <a class="header-icon" id="header-cart-link" href="../cart/index.html" aria-label="Корзина">
+        <a class="header-icon" id="header-cart-link" href="index.html" aria-label="Корзина">
           <svg viewBox="0 0 20 23" aria-hidden="true">
             <path d="M13.462 7.923V4.462C13.462 2.549 11.912 1 10 1C8.088 1 6.539 2.549 6.539 4.462V7.923"></path>
             <path d="M18.89 20.67C18.949 21.259 18.487 21.77 17.895 21.77H2.105C1.513 21.77 1.051 21.259 1.11 20.67L2.295 8.824C2.346 8.313 2.776 7.923 3.29 7.923H16.71C17.224 7.923 17.654 8.313 17.705 8.824L18.89 20.67Z"></path>
@@ -62,10 +62,10 @@
     </div>
   </header>
 
-  <aside class="catalog-drawer" id="catalog-drawer" aria-hidden="true">
-    <div class="catalog-drawer__header">
-      <span>Каталог</span>
-      <button class="catalog-drawer__close" id="catalog-drawer-close" type="button" aria-label="Закрыть меню каталога">
+  <aside class="cart-drawer" id="cart-drawer" aria-hidden="true">
+    <div class="cart-drawer__header">
+      <span>Меню</span>
+      <button class="cart-drawer__close" id="cart-drawer-close" type="button" aria-label="Закрыть меню">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M6 6L18 18"></path>
           <path d="M18 6L6 18"></path>
@@ -73,46 +73,79 @@
       </button>
     </div>
 
-    <nav class="catalog-drawer__nav" aria-label="Мобильная навигация">
-      <a href="index.html">Каталог</a>
+    <nav class="cart-drawer__nav" aria-label="Мобильная навигация">
+      <a href="../каталог/index.html">Каталог</a>
       <a href="../главная страница/index.html#new-arrivals">Новинки</a>
       <a href="../главная страница/index.html#popular">Хиты продаж</a>
       <a href="../главная страница/index.html#buyers">Покупателям</a>
       <a href="../главная страница/index.html#footer">Блог</a>
     </nav>
 
-    <div class="catalog-drawer__catalog">
-      <span class="catalog-drawer__catalog-title">Разделы</span>
-      <div id="catalog-drawer-tree"></div>
+    <div class="cart-drawer__catalog">
+      <span class="cart-drawer__catalog-title">Разделы</span>
+      <div id="cart-drawer-tree"></div>
     </div>
   </aside>
 
-  <main class="catalog-page" id="top">
-    <section class="catalog-hero">
+  <main class="cart-page" id="top">
+    <section class="cart-shell">
       <div class="container">
-        <div class="catalog-intro">
-          <nav class="catalog-breadcrumbs" aria-label="Хлебные крошки">
-            <a href="../главная страница/index.html">Главная</a>
-            <span>/</span>
-            <a id="breadcrumb-catalog-link" href="index.html">Каталог</a>
-            <span id="breadcrumb-current-separator" hidden>/</span>
-            <span id="breadcrumb-current" hidden></span>
-          </nav>
-          <h1 class="catalog-intro__title" id="catalog-page-title">Каталог</h1>
+        <div class="cart-breadcrumbs">
+          <a href="../главная страница/index.html">Главная</a>
+          <span>/</span>
+          <span>Корзина</span>
         </div>
-      </div>
-    </section>
 
-    <section class="catalog-layout">
-      <div class="container catalog-layout__grid">
-        <aside class="catalog-sidebar" aria-label="Разделы каталога">
-          <div id="catalog-tree"></div>
-        </aside>
+        <h1 class="cart-page__title">Корзина</h1>
 
-        <div class="catalog-main">
-          <div class="catalog-grid" id="catalog-products"></div>
-          <div class="catalog-empty" id="catalog-empty">По выбранному разделу пока нет товаров.</div>
-          <nav class="catalog-pagination" id="catalog-pagination" aria-label="Пагинация каталога"></nav>
+        <div class="cart-layout">
+          <div class="cart-main">
+            <div class="cart-empty" id="empty-cart" hidden>
+              <div class="cart-empty__copy">
+                <h2 class="cart-empty__title">Корзина пока пуста</h2>
+                <p class="cart-empty__text">
+                  Добавьте несколько моделей из каталога, и здесь появится аккуратная подборка с итогом, доставкой и быстрым переходом к оформлению.
+                </p>
+              </div>
+              <div class="cart-empty__actions">
+                <a class="cart-empty__primary" href="../каталог/index.html">Перейти в каталог</a>
+              </div>
+            </div>
+
+            <div class="cart-items" id="cart-items" hidden></div>
+          </div>
+
+          <aside class="cart-summary" id="cart-summary" hidden>
+            <div class="cart-summary__panel">
+              <h2 class="cart-summary__title">Итог заказа</h2>
+
+              <div class="cart-summary__rows">
+                <div class="cart-summary__row">
+                  <span>Товары</span>
+                  <span id="summary-subtotal">0 ₽</span>
+                </div>
+                <div class="cart-summary__row">
+                  <span>Доставка</span>
+                  <span id="summary-delivery">0 ₽</span>
+                </div>
+                <div class="cart-summary__row cart-summary__row--accent">
+                  <span>Итого</span>
+                  <strong id="summary-total">0 ₽</strong>
+                </div>
+              </div>
+
+              <p class="cart-summary__note" id="delivery-note">Добавьте товары в корзину, чтобы увидеть итог заказа.</p>
+
+              <a class="cart-summary__primary" id="checkout-button" data-telegram-link href="https://t.me/" target="_blank" rel="noreferrer">
+                Подтвердить в Telegram
+              </a>
+              <a class="cart-summary__secondary" href="../каталог/index.html">Продолжить покупки</a>
+
+              <p class="cart-summary__meta">
+                Подтверждение заказа, доставка и подбор размера доступны в Телеграм.
+              </p>
+            </div>
+          </aside>
         </div>
       </div>
     </section>
@@ -129,11 +162,11 @@
 
       <nav class="site-footer__column" aria-labelledby="footer-catalog-title">
         <h2 class="site-footer__title" id="footer-catalog-title">Каталог</h2>
-        <a href="index.html">Одежда</a>
-        <a href="index.html?page=shoes">Обувь</a>
+        <a href="../каталог/index.html">Одежда</a>
+        <a href="../каталог/index.html?page=shoes">Обувь</a>
         <a href="../главная страница/index.html#new-arrivals">Новинки</a>
         <a href="../главная страница/index.html#popular">Хиты продаж</a>
-        <a href="index.html">Sale</a>
+        <a href="../каталог/index.html">Распродажа</a>
       </nav>
 
       <nav class="site-footer__column" aria-labelledby="footer-buyers-title">
@@ -155,7 +188,7 @@
               <path d="M4.5 7.5C4.631 13.414 7.62 17 12.855 17H13.152V13.612C15.06 13.802 16.503 15.194 17.082 17H19.78C19.039 14.311 17.09 12.826 15.875 12.262C17.09 11.561 18.793 9.857 19.2 7.5H16.75C16.219 9.416 14.647 11.12 13.152 11.284V7.5H10.702V14.128C9.188 13.749 7.278 11.913 7.194 7.5H4.5Z"></path>
             </svg>
           </a>
-          <a data-telegram-link href="https://t.me/" target="_blank" rel="noreferrer" aria-label="Telegram">
+          <a data-telegram-link href="https://t.me/" target="_blank" rel="noreferrer" aria-label="Телеграм">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M21.24 4.582L18.177 19.032C17.946 20.052 17.343 20.306 16.485 19.825L11.818 16.384L9.566 18.552C9.317 18.801 9.108 19.01 8.627 19.01L8.964 14.258L17.632 6.43C18.009 6.093 17.55 5.91 17.047 6.247L6.338 12.992L1.731 11.555C0.73 11.239 0.712 10.548 1.94 10.066L19.954 3.118C20.792 2.808 21.525 3.304 21.24 4.582Z"></path>
             </svg>
@@ -167,15 +200,15 @@
             <span>*</span>
           </a>
         </div>
-        <p class="site-footer__meta">* Meta запрещена на территории России</p>
+        <p class="site-footer__meta">* Соцсеть запрещена на территории России</p>
       </section>
     </div>
   </footer>
 
   <script src="../shared/site-config.js?v=20260502-auth-bot-2"></script>
   <script src="../shared/store.js?v=20260502-auth-bot-2"></script>
-  <script src="../shared/catalog-store.js?v=20260503-db-1"></script>
   <script src="../shared/auth.js?v=20260502-auth-bot-2"></script>
-  <script src="script.js?v=20260503-db-1"></script>
+  <script src="../shared/checkout.js?v=20260502-auth-bot-2"></script>
+  <script src="script.js?v=20260502-auth-bot-2"></script>
 </body>
 </html>
