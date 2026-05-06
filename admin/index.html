@@ -3,260 +3,352 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Конструктор витрины | EXCLUSIVE</title>
-  <meta name="description" content="Закрытая админка EXCLUSIVE для владельца: категории, товары, цены, размеры и изображение витрины.">
+  <title>Админка каталога | EXCLUSIVE</title>
+  <meta name="description" content="Простая закрытая админка EXCLUSIVE для категорий, товаров, цен, размеров, ухода и характеристик.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="icon" type="image/svg+xml" href="../главная страница/favicon.svg">
-  <link rel="stylesheet" href="styles.css?v=20260503-admin-builder-1">
+  <link rel="icon" type="image/svg+xml" href="/home/favicon.svg">
+  <link rel="stylesheet" href="/home/styles.css?v=20260506-layout-2">
+  <link rel="stylesheet" href="styles.css?v=20260503-admin-builder-3">
+  <script src="/shared/metrika.js"></script>
 </head>
 <body class="admin-body">
-  <header class="admin-header">
-    <div class="admin-shell admin-header__row">
-      <a class="admin-logo" href="../главная страница/index.html">EXCLUSIVE</a>
+    <noscript><div><img src="https://mc.yandex.ru/watch/109059725" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<div class="mobile-menu-backdrop" id="mobile-menu-backdrop" hidden></div>
 
-      <nav class="admin-nav" aria-label="Навигация">
-        <a href="../главная страница/index.html">Главная</a>
-        <a href="../каталог/index.html">Каталог</a>
-        <a href="../account/index.html">Кабинет</a>
+  <header class="site-header" id="site-header">
+    <div class="container-fluid site-header__row">
+      <div class="site-header__mobile-left">
+        <button class="header-icon menu-toggle" id="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu" aria-label="Открыть меню">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+
+      <a class="site-logo" href="/#top" aria-label="EXCLUSIVE, перейти в начало">
+        <span class="site-logo__text">EXCLUSIVE</span>
+      </a>
+
+      <nav class="site-nav" aria-label="Основная навигация">
+        <a class="site-nav__link" href="/catalog/">Каталог</a>
+        <a class="site-nav__link" href="/new/">Новинки</a>
+        <a class="site-nav__link" href="/hit/">Хиты продаж</a>
+        <a class="site-nav__link" href="/#buyers">Покупателям</a>
       </nav>
 
-      <div class="admin-header__meta">
-        <div class="admin-owner" id="admin-owner">Владелец</div>
-        <button class="admin-header__logout" id="admin-logout" type="button">Выйти</button>
+      <div class="site-actions" aria-label="Действия пользователя">
+        <a class="header-icon" data-profile-link href="/account/" aria-label="Профиль">
+          <svg viewBox="0 0 24 25" aria-hidden="true">
+            <circle cx="12" cy="7.75" r="3.75"></circle>
+            <path d="M5 20.5C5 16.91 8.134 14 12 14C15.866 14 19 16.91 19 20.5"></path>
+          </svg>
+        </a>
+        <a class="header-icon" href="/cart/" aria-label="Корзина">
+          <svg viewBox="0 0 20 23" aria-hidden="true">
+            <path d="M13.462 7.923V4.462C13.462 2.549 11.912 1 10 1C8.088 1 6.539 2.549 6.539 4.462V7.923"></path>
+            <path d="M18.89 20.67C18.949 21.259 18.487 21.77 17.895 21.77H2.105C1.513 21.77 1.051 21.259 1.11 20.67L2.295 8.824C2.346 8.313 2.776 7.923 3.29 7.923H16.71C17.224 7.923 17.654 8.313 17.705 8.824L18.89 20.67Z"></path>
+          </svg>
+          <span class="header-icon__badge" id="header-cart-badge" hidden>1</span>
+        </a>
+        <a class="header-icon" href="/#footer" aria-label="Избранное">
+          <svg viewBox="0 0 24 25" aria-hidden="true">
+            <path d="M12 20.5L4.9 13.4C3.7 12.2 3 10.64 3 8.97C3 5.56 7.04 3.83 9.5 6.15L12 8.5L14.5 6.15C16.96 3.83 21 5.56 21 8.97C21 10.64 20.3 12.2 19.1 13.4L12 20.5"></path>
+          </svg>
+        </a>
       </div>
     </div>
   </header>
 
-  <main class="admin-page">
-    <div class="admin-shell">
+  <aside class="mobile-menu" id="mobile-menu" aria-hidden="true">
+    <div class="mobile-menu__panel">
+      <div class="mobile-menu__header">
+        <span>Меню</span>
+        <button class="mobile-menu__close" id="mobile-menu-close" type="button" aria-label="Закрыть меню">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6L18 18"></path>
+            <path d="M18 6L6 18"></path>
+          </svg>
+        </button>
+      </div>
+
+      <nav class="mobile-menu__nav" aria-label="Мобильная навигация">
+        <a href="/catalog/">Каталог</a>
+        <a href="/new/">Новинки</a>
+        <a href="/hit/">Хиты продаж</a>
+        <a href="/#buyers">Покупателям</a>
+      </nav>
+
+      <div class="mobile-menu__groups" id="mobile-menu-groups"></div>
+    </div>
+  </aside>
+
+  <main class="admin-main" id="top">
+    <div class="container-fluid">
       <section class="admin-guard" id="admin-guard" hidden>
         <p class="admin-guard__eyebrow">Закрытый раздел</p>
         <h1 class="admin-guard__title" id="admin-guard-title">Нужен вход</h1>
         <p class="admin-guard__text" id="admin-guard-text"></p>
         <div class="admin-guard__actions">
-          <a class="admin-action admin-action--primary" id="admin-guard-primary" href="../auth/index.html">Войти</a>
-          <a class="admin-action" id="admin-guard-secondary" href="../главная страница/index.html">На главную</a>
+          <a class="admin-action admin-action--primary" id="admin-guard-primary" href="/auth/">Войти</a>
+          <a class="admin-action" id="admin-guard-secondary" href="/">На главную</a>
         </div>
       </section>
 
       <section class="admin-builder" id="admin-builder" hidden>
-        <section class="admin-hero">
-          <div class="admin-hero__copy">
-            <p class="admin-hero__eyebrow">Личный конструктор</p>
-            <h1 class="admin-hero__title">Конструктор витрины EXCLUSIVE</h1>
-            <p class="admin-hero__lead">
-              Здесь удобно собирать каталог: фильтровать категории, быстро находить товар, менять цену, размеры, фото и тексты без длинных списков.
-            </p>
+        <div class="admin-page-head">
+          <div class="admin-page-head__copy">
+            <p class="admin-page-head__eyebrow">Личный кабинет владельца</p>
+            <h1 class="admin-page-head__title">Админка каталога</h1>
+            <p class="admin-page-head__lead">Сначала выбери категорию, потом товар. Всё лишнее убрали, чтобы редактирование было быстрым и спокойным.</p>
           </div>
 
-          <div class="admin-hero__aside">
-            <div class="admin-stat">
-              <span class="admin-stat__label">Категории</span>
-              <strong class="admin-stat__value" id="admin-category-count">0</strong>
-            </div>
-            <div class="admin-stat">
-              <span class="admin-stat__label">Товары</span>
-              <strong class="admin-stat__value" id="admin-product-count">0</strong>
-            </div>
-            <div class="admin-actions">
-              <button class="admin-action admin-action--primary" id="admin-new-product" type="button">Новый товар</button>
-              <button class="admin-action" id="admin-new-category" type="button">Новая категория</button>
-            </div>
+          <div class="admin-page-head__meta">
+            <div class="admin-page-head__owner" id="admin-owner">Владелец</div>
+            <button class="admin-action" id="admin-logout" type="button">Выйти</button>
           </div>
-        </section>
+        </div>
 
-        <section class="admin-workspace">
-          <aside class="admin-sidebar">
-            <section class="admin-panel admin-panel--sidebar">
+        <div class="admin-notice" id="admin-notice" hidden></div>
+
+        <div class="admin-workspace">
+          <aside class="admin-column admin-column--sidebar">
+            <section class="admin-panel">
               <div class="admin-panel__head">
                 <div>
-                  <p class="admin-panel__eyebrow">Фильтр каталога</p>
+                  <p class="admin-panel__eyebrow">Каталог</p>
                   <h2 class="admin-panel__title">Категории</h2>
                 </div>
+                <div class="admin-panel__count" id="admin-category-count">0</div>
               </div>
-              <div class="admin-filter-list" id="admin-category-filter"></div>
+
+              <button class="admin-action admin-action--primary admin-action--wide" id="admin-new-category" type="button">Новая категория</button>
+              <div class="admin-category-filter" id="admin-category-filter"></div>
             </section>
 
-            <section class="admin-panel admin-panel--sidebar">
+            <section class="admin-panel">
               <div class="admin-panel__head">
                 <div>
-                  <p class="admin-panel__eyebrow">Редактирование</p>
-                  <h2 class="admin-panel__title">Разделы</h2>
+                  <p class="admin-panel__eyebrow">Раздел</p>
+                  <h2 class="admin-panel__title" id="admin-category-editor-title">Новая категория</h2>
                 </div>
               </div>
-              <div class="admin-category-list" id="admin-category-editor-list"></div>
+
+              <form class="admin-form" id="admin-category-editor-form">
+                <input id="admin-category-key" type="hidden" name="categoryKey">
+
+                <label class="admin-field">
+                  <span>Название категории</span>
+                  <input id="admin-category-title" name="title" type="text" placeholder="Например, Платья" required>
+                </label>
+
+                <label class="admin-field">
+                  <span>Ключ</span>
+                  <input id="admin-category-key-visible" name="keyVisible" type="text" placeholder="Создастся автоматически" disabled>
+                </label>
+
+                <label class="admin-field">
+                  <span>Описание</span>
+                  <textarea id="admin-category-description" name="description" rows="4" placeholder="Коротко о разделе"></textarea>
+                </label>
+
+                <input id="admin-category-palette-start" name="paletteStart" type="hidden" value="#f4eee6">
+                <input id="admin-category-palette-end" name="paletteEnd" type="hidden" value="#ccb39d">
+
+                <div class="admin-form__actions">
+                  <button class="admin-action admin-action--primary" type="submit">Сохранить</button>
+                  <button class="admin-action" id="admin-category-reset" type="button">Очистить</button>
+                  <button class="admin-action admin-action--danger" id="admin-category-delete" type="button">Удалить</button>
+                </div>
+              </form>
             </section>
           </aside>
 
-          <section class="admin-canvas">
-            <div class="admin-panel admin-panel--canvas">
-              <div class="admin-toolbar">
-                <label class="admin-search">
-                  <span class="admin-search__label">Поиск по товарам</span>
-                  <input id="admin-product-search" type="search" placeholder="Название, артикул или категория">
-                </label>
-
-                <div class="admin-toolbar__summary">
-                  <p class="admin-toolbar__eyebrow">Вид каталога</p>
-                  <strong class="admin-toolbar__title" id="admin-toolbar-title">Все товары</strong>
-                  <span class="admin-toolbar__meta" id="admin-toolbar-meta">0 позиций</span>
+          <section class="admin-column admin-column--products">
+            <section class="admin-panel">
+              <div class="admin-panel__head admin-panel__head--stack">
+                <div>
+                  <p class="admin-panel__eyebrow">Товары</p>
+                  <h2 class="admin-panel__title" id="admin-toolbar-title">Сначала выбери категорию</h2>
+                  <p class="admin-panel__lead" id="admin-toolbar-meta">После выбора категории здесь появятся товары для редактирования.</p>
                 </div>
+
+                <div class="admin-products__controls">
+                  <label class="admin-search">
+                    <span class="admin-search__label">Поиск</span>
+                    <input id="admin-product-search" type="search" placeholder="Название или артикул">
+                  </label>
+                  <button class="admin-action admin-action--primary" id="admin-new-product" type="button">Новый товар</button>
+                </div>
+              </div>
+
+              <div class="admin-products__summary">
+                <span>Всего товаров</span>
+                <strong id="admin-product-count">0</strong>
               </div>
 
               <div class="admin-product-grid" id="admin-product-grid"></div>
-              <div class="admin-empty" id="admin-product-empty" hidden>По этому фильтру пока ничего нет.</div>
-            </div>
+              <div class="admin-empty" id="admin-product-empty">Выбери категорию слева, потом выбери товар для редактирования.</div>
+            </section>
           </section>
 
-          <aside class="admin-editor">
-            <section class="admin-panel admin-panel--editor">
-              <div class="admin-editor__tabs">
-                <button class="admin-editor__tab is-active" id="admin-mode-product" type="button">Товар</button>
-                <button class="admin-editor__tab" id="admin-mode-category" type="button">Категория</button>
+          <aside class="admin-column admin-column--editor">
+            <section class="admin-panel">
+              <div class="admin-panel__head">
+                <div>
+                  <p class="admin-panel__eyebrow">Карточка товара</p>
+                  <h2 class="admin-panel__title" id="admin-product-editor-title">Новый товар</h2>
+                </div>
+                <a class="admin-open-link" id="admin-open-product-link" href="#" target="_blank" rel="noreferrer" hidden>Открыть</a>
               </div>
 
-              <div class="admin-editor__content">
-                <section class="admin-editor-section" id="admin-product-section">
-                  <div class="admin-panel__head admin-panel__head--editor">
-                    <div>
-                      <p class="admin-panel__eyebrow">Карточка товара</p>
-                      <h2 class="admin-panel__title" id="admin-product-editor-title">Новый товар</h2>
-                    </div>
-                    <a class="admin-open-link" id="admin-open-product-link" href="#" target="_blank" rel="noreferrer" hidden>Открыть</a>
+              <form class="admin-form" id="admin-product-editor-form">
+                <input id="admin-product-id" type="hidden" name="productId">
+
+                <div class="admin-form__row">
+                  <label class="admin-field">
+                    <span>Категория</span>
+                    <select id="admin-product-category" name="categoryKey"></select>
+                  </label>
+
+                  <label class="admin-field">
+                    <span>Цена</span>
+                    <input id="admin-product-price" name="priceValue" type="number" min="0" step="1" placeholder="6990" required>
+                  </label>
+                </div>
+
+                <label class="admin-field">
+                  <span>Название товара</span>
+                  <textarea id="admin-product-title" name="title" rows="3" placeholder="Название товара" required></textarea>
+                </label>
+
+                <div class="admin-form__row">
+                  <label class="admin-field">
+                    <span>Артикул</span>
+                    <input id="admin-product-article" name="article" type="text" placeholder="EX-OUT-101">
+                  </label>
+
+                  <label class="admin-field">
+                    <span>Подпись</span>
+                    <input id="admin-product-label" name="label" type="text" placeholder="ПАЛЬТО">
+                  </label>
+                </div>
+
+                <div class="admin-form__row">
+                  <label class="admin-field">
+                    <span>Размеры</span>
+                    <input id="admin-product-sizes" name="sizes" type="text" placeholder="XS, S, M, L">
+                  </label>
+
+                  <label class="admin-field">
+                    <span>Цвета</span>
+                    <input id="admin-product-colors" name="colors" type="text" placeholder="Черный, Бежевый">
+                  </label>
+                </div>
+
+                <label class="admin-field">
+                  <span>Фото товара</span>
+                  <input id="admin-product-image" name="image" type="text" placeholder="/uploads/products/black-trench-01.webp">
+                  <small class="admin-field__hint">Можно вставить путь, ссылку или выбрать файл ниже.</small>
+                </label>
+
+                <label class="admin-field">
+                  <span>Загрузить файл</span>
+                  <input id="admin-product-image-file" name="imageFile" type="file" accept="image/*">
+                </label>
+
+                <div class="admin-image-preview" id="admin-product-image-preview-block" hidden>
+                  <div class="admin-image-preview__frame">
+                    <img id="admin-product-image-preview" src="" alt="Превью изображения товара">
                   </div>
+                  <p class="admin-image-preview__caption" id="admin-product-image-preview-caption"></p>
+                </div>
 
-                  <form class="admin-form" id="admin-product-editor-form">
-                    <input id="admin-product-id" type="hidden" name="productId">
+                <label class="admin-field">
+                  <span>Описание</span>
+                  <textarea id="admin-product-description" name="description" rows="4" placeholder="Короткое описание товара"></textarea>
+                </label>
 
-                    <div class="admin-form__row">
-                      <label class="admin-field">
-                        <span>Категория</span>
-                        <select id="admin-product-category" name="categoryKey"></select>
-                      </label>
+                <label class="admin-field">
+                  <span>Состав</span>
+                  <textarea id="admin-product-composition" name="composition" rows="3" placeholder="55% вискоза, 45% полиэстер"></textarea>
+                </label>
 
-                      <label class="admin-field">
-                        <span>Цена</span>
-                        <input id="admin-product-price" name="priceValue" type="number" min="0" step="1" placeholder="6990" required>
-                      </label>
-                    </div>
+                <label class="admin-field">
+                  <span>Характеристики</span>
+                  <textarea id="admin-product-features" name="features" rows="5" placeholder="Силуэт: Полуприлегающий&#10;Стиль: Городская классика"></textarea>
+                </label>
 
-                    <label class="admin-field admin-field--full">
-                      <span>Название товара</span>
-                      <textarea id="admin-product-title" name="title" rows="3" placeholder="Название товара" required></textarea>
-                    </label>
+                <label class="admin-field">
+                  <span>Уход</span>
+                  <textarea id="admin-product-care" name="care" rows="5" placeholder="Каждая строка отдельным пунктом"></textarea>
+                </label>
 
-                    <div class="admin-form__row">
-                      <label class="admin-field">
-                        <span>Артикул</span>
-                        <input id="admin-product-article" name="article" type="text" placeholder="EX-OUT-101-PALTOE">
-                      </label>
+                <input id="admin-product-palette-start" name="paletteStart" type="hidden" value="#f4eee6">
+                <input id="admin-product-palette-end" name="paletteEnd" type="hidden" value="#ccb39d">
 
-                      <label class="admin-field">
-                        <span>Подпись</span>
-                        <input id="admin-product-label" name="label" type="text" placeholder="ПАЛЬТО">
-                      </label>
-                    </div>
-
-                    <div class="admin-form__row">
-                      <label class="admin-field">
-                        <span>Размеры</span>
-                        <input id="admin-product-sizes" name="sizes" type="text" placeholder="XS, S, M, L">
-                      </label>
-
-                      <label class="admin-field">
-                        <span>Цвета</span>
-                        <input id="admin-product-colors" name="colors" type="text" placeholder="Черный, Бежевый">
-                      </label>
-                    </div>
-
-                    <label class="admin-field admin-field--full">
-                      <span>Фото товара</span>
-                      <input id="admin-product-image" name="image" type="text" placeholder="/uploads/products/black-trench-01.webp">
-                    </label>
-
-                    <label class="admin-field admin-field--full">
-                      <span>Описание</span>
-                      <textarea id="admin-product-description" name="description" rows="4" placeholder="Короткое описание товара"></textarea>
-                    </label>
-
-                    <div class="admin-form__row">
-                      <label class="admin-field">
-                        <span>Фон 1</span>
-                        <input id="admin-product-palette-start" name="paletteStart" type="color" value="#f4eee6">
-                      </label>
-
-                      <label class="admin-field">
-                        <span>Фон 2</span>
-                        <input id="admin-product-palette-end" name="paletteEnd" type="color" value="#ccb39d">
-                      </label>
-                    </div>
-
-                    <div class="admin-form__actions">
-                      <button class="admin-action admin-action--primary" type="submit">Сохранить товар</button>
-                      <button class="admin-action" id="admin-product-reset" type="button">Очистить</button>
-                      <button class="admin-action admin-action--danger" id="admin-product-delete" type="button">Удалить</button>
-                    </div>
-                  </form>
-                </section>
-
-                <section class="admin-editor-section" id="admin-category-section" hidden>
-                  <div class="admin-panel__head admin-panel__head--editor">
-                    <div>
-                      <p class="admin-panel__eyebrow">Категория</p>
-                      <h2 class="admin-panel__title" id="admin-category-editor-title">Новая категория</h2>
-                    </div>
-                  </div>
-
-                  <form class="admin-form" id="admin-category-editor-form">
-                    <input id="admin-category-key" type="hidden" name="categoryKey">
-
-                    <label class="admin-field">
-                      <span>Название категории</span>
-                      <input id="admin-category-title" name="title" type="text" placeholder="Например, Платья" required>
-                    </label>
-
-                    <label class="admin-field">
-                      <span>Системный ключ</span>
-                      <input id="admin-category-key-visible" name="keyVisible" type="text" placeholder="Создастся автоматически" disabled>
-                    </label>
-
-                    <label class="admin-field admin-field--full">
-                      <span>Описание</span>
-                      <textarea id="admin-category-description" name="description" rows="4" placeholder="Короткое описание раздела"></textarea>
-                    </label>
-
-                    <div class="admin-form__row">
-                      <label class="admin-field">
-                        <span>Фон 1</span>
-                        <input id="admin-category-palette-start" name="paletteStart" type="color" value="#f4eee6">
-                      </label>
-
-                      <label class="admin-field">
-                        <span>Фон 2</span>
-                        <input id="admin-category-palette-end" name="paletteEnd" type="color" value="#ccb39d">
-                      </label>
-                    </div>
-
-                    <div class="admin-form__actions">
-                      <button class="admin-action admin-action--primary" type="submit">Сохранить категорию</button>
-                      <button class="admin-action" id="admin-category-reset" type="button">Очистить</button>
-                      <button class="admin-action admin-action--danger" id="admin-category-delete" type="button">Удалить</button>
-                    </div>
-                  </form>
-                </section>
-              </div>
+                <div class="admin-form__actions">
+                  <button class="admin-action admin-action--primary" type="submit">Сохранить</button>
+                  <button class="admin-action" id="admin-product-reset" type="button">Очистить</button>
+                  <button class="admin-action admin-action--danger" id="admin-product-delete" type="button">Удалить</button>
+                </div>
+              </form>
             </section>
           </aside>
-        </section>
+        </div>
       </section>
     </div>
   </main>
 
-  <script src="../shared/site-config.js?v=20260503-admin-builder-1"></script>
-  <script src="../shared/auth.js?v=20260503-admin-builder-1"></script>
-  <script src="../shared/catalog-store.js?v=20260503-admin-builder-1"></script>
-  <script src="script.js?v=20260503-admin-builder-1"></script>
+  <footer class="site-footer" id="footer">
+    <div class="container-fluid site-footer__grid">
+      <div class="site-footer__brand">
+        <a class="site-footer__logo" href="/#top">EXCLUSIVE</a>
+        <a class="site-footer__legal" href="#">Политика конфиденциальности</a>
+        <p class="site-footer__copy">© <span id="current-year">2026</span> EXCLUSIVE Все права защищены</p>
+      </div>
+
+      <nav class="site-footer__column" aria-labelledby="footer-catalog-title">
+        <h2 class="site-footer__title" id="footer-catalog-title">Каталог</h2>
+        <a href="/catalog/">Одежда</a>
+        <a href="/catalog/?page=shoes">Обувь</a>
+        <a href="/new/">Новинки</a>
+        <a href="/catalog/">Распродажа</a>
+      </nav>
+
+      <nav class="site-footer__column" aria-labelledby="footer-info-title">
+        <h2 class="site-footer__title" id="footer-info-title">Информация</h2>
+        <a href="/#footer">О компании</a>
+        <a href="/#footer">Контакты</a>
+      </nav>
+
+      <section class="site-footer__contacts" aria-labelledby="footer-contacts-title">
+        <h2 class="site-footer__title" id="footer-contacts-title">Контакты</h2>
+        <p>Адрес: г. Гуково, ул. Комсомольская 56</p>
+        <p>Телефон: <a href="tel:+79953980243">+7 (995) 398 02 43</a></p>
+        <div class="site-footer__socials" aria-label="Социальные сети">
+          <a data-telegram-link href="https://t.me/" target="_blank" rel="noreferrer" aria-label="Telegram">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M21.24 4.582L18.177 19.032C17.946 20.052 17.343 20.306 16.485 19.825L11.818 16.384L9.566 18.552C9.317 18.801 9.108 19.01 8.627 19.01L8.964 14.258L17.632 6.43C18.009 6.093 17.55 5.91 17.047 6.247L6.338 12.992L1.731 11.555C0.73 11.239 0.712 10.548 1.94 10.066L19.954 3.118C20.792 2.808 21.525 3.304 21.24 4.582Z"></path>
+            </svg>
+          </a>
+          <a href="#" aria-label="Instagram">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7.5 2H16.5C19.538 2 22 4.462 22 7.5V16.5C22 19.538 19.538 22 16.5 22H7.5C4.462 22 2 19.538 2 16.5V7.5C2 4.462 4.462 2 7.5 2ZM7.32 4C5.486 4 4 5.486 4 7.32V16.68C4 18.514 5.486 20 7.32 20H16.68C18.514 20 20 18.514 20 16.68V7.32C20 5.486 18.514 4 16.68 4H7.32ZM17.55 5.5C18.191 5.5 18.71 6.019 18.71 6.66C18.71 7.301 18.191 7.82 17.55 7.82C16.909 7.82 16.39 7.301 16.39 6.66C16.39 6.019 16.909 5.5 17.55 5.5ZM12 7C14.761 7 17 9.239 17 12C17 14.761 14.761 17 12 17C9.239 17 7 14.761 7 12C7 9.239 9.239 7 12 7ZM12 9C10.343 9 9 10.343 9 12C9 13.657 10.343 15 12 15C13.657 15 15 13.657 15 12C15 10.343 13.657 9 12 9Z"></path>
+            </svg>
+            <span>*</span>
+          </a>
+        </div>
+        <p class="site-footer__meta">* Meta запрещена на территории России</p>
+      </section>
+    </div>
+  </footer>
+
+  <script src="../shared/site-config.js?v=20260503-admin-builder-3"></script>
+  <script src="../shared/store.js?v=20260503-admin-builder-3"></script>
+  <script src="../shared/auth.js?v=20260503-session-2"></script>
+  <script src="../shared/catalog-store.js?v=20260503-admin-builder-3"></script>
+  <script src="script.js?v=20260503-admin-builder-3"></script>
 </body>
 </html>

@@ -1,6 +1,25 @@
 name: exclusive-site
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: exclusive-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-exclusive}
+      POSTGRES_USER: ${POSTGRES_USER:-exclusive}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-exclusive}
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-exclusive} -d ${POSTGRES_DB:-exclusive}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
   web:
     build:
       context: .
@@ -13,6 +32,7 @@ services:
       - "8080:80"
     restart: unless-stopped
     volumes:
+      - ./фото:/usr/share/nginx/html/фото
       - ./uploads:/usr/share/nginx/html/uploads
 
   api:
@@ -20,7 +40,11 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     container_name: exclusive-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://exclusive:exclusive@postgres:5432/exclusive}
       EXCLUSIVE_API_HOST: 0.0.0.0
       EXCLUSIVE_API_PORT: 9000
       EXCLUSIVE_DEMO_PHONE: ${EXCLUSIVE_DEMO_PHONE:-+79999999999}
@@ -40,3 +64,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 5s
+
+volumes:
+  postgres_data:

@@ -28,9 +28,17 @@ const ORDER_STATUS_LABELS = {
   cancelled: "Отменен",
 };
 
+const NOTICE_TIMEOUT_MS = 2400;
+let noticeTimer = 0;
+
 const setNotice = (message, type = "") => {
   if (!noticeNode) {
     return;
+  }
+
+  if (noticeTimer) {
+    window.clearTimeout(noticeTimer);
+    noticeTimer = 0;
   }
 
   if (!message) {
@@ -43,6 +51,12 @@ const setNotice = (message, type = "") => {
   noticeNode.hidden = false;
   noticeNode.textContent = message;
   noticeNode.classList.toggle("is-error", type === "error");
+
+  if (type !== "error") {
+    noticeTimer = window.setTimeout(() => {
+      setNotice("");
+    }, NOTICE_TIMEOUT_MS);
+  }
 };
 
 const escapeHtml = (value) =>
@@ -52,23 +66,25 @@ const escapeHtml = (value) =>
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
 
-const formatPhoneInput = (value) => {
+const getPhoneDigits = (value) => {
   let digits = String(value || "").replace(/[^\d]/g, "");
 
   if (digits.startsWith("7") || digits.startsWith("8")) {
     digits = digits.slice(1);
   }
 
-  digits = digits.slice(0, 10);
+  return digits.slice(0, 10);
+};
 
+const formatPhoneInput = (value) => {
+  const digits = getPhoneDigits(value);
   let result = "+7";
 
   if (!digits) {
     return result;
   }
 
-  result += " (";
-  result += digits.slice(0, 3);
+  result += ` (${digits.slice(0, 3)}`;
 
   if (digits.length >= 3) {
     result += ")";
@@ -89,36 +105,110 @@ const formatPhoneInput = (value) => {
   return result;
 };
 
+const bindPhoneMask = (input) => {
+  if (!input) {
+    return;
+  }
+
+  const applyMask = () => {
+    input.value = formatPhoneInput(input.value);
+  };
+
+  input.addEventListener("focus", applyMask);
+  input.addEventListener("input", applyMask);
+  input.addEventListener("keydown", (event) => {
+    if (!["Backspace", "Delete"].includes(event.key)) {
+      return;
+    }
+
+    const start = input.selectionStart ?? input.value.length;
+    const end = input.selectionEnd ?? start;
+
+    if (start !== end) {
+      return;
+    }
+
+    const rawValue = input.value;
+    const digits = getPhoneDigits(rawValue);
+    const digitsBeforeCursor = getPhoneDigits(rawValue.slice(0, start)).length;
+    const targetIndex = event.key === "Backspace" ? start - 1 : start;
+    const targetChar = rawValue[targetIndex] || "";
+
+    if (start <= 2 && event.key === "Backspace") {
+      event.preventDefault();
+      input.value = "+7";
+      return;
+    }
+
+    if (targetChar && /\D/.test(targetChar)) {
+      event.preventDefault();
+      const removeIndex = event.key === "Backspace" ? digitsBeforeCursor - 1 : digitsBeforeCursor;
+
+      if (removeIndex < 0 || removeIndex >= digits.length) {
+        return;
+      }
+
+      const nextDigits = `${digits.slice(0, removeIndex)}${digits.slice(removeIndex + 1)}`;
+      input.value = formatPhoneInput(nextDigits);
+      const nextCaret = Math.max(2, Math.min(input.value.length, start - (event.key === "Backspace" ? 1 : 0)));
+
+      window.requestAnimationFrame(() => {
+        input.setSelectionRange(nextCaret, nextCaret);
+      });
+    }
+  });
+
+  applyMask();
+};
+
 const renderOrders = (orders) => {
   if (!ordersNode || !emptyOrdersNode) {
     return;
   }
 
-  if (!orders.length) {
+  const completedOrders = (orders || []).filter((order) => order.status === "completed");
+
+  if (!completedOrders.length) {
     ordersNode.innerHTML = "";
     emptyOrdersNode.hidden = false;
     return;
   }
 
   emptyOrdersNode.hidden = true;
-  ordersNode.innerHTML = orders
+  ordersNode.innerHTML = completedOrders
     .map((order) => {
-      const itemsText = (order.items || [])
-        .map((item) => `${escapeHtml(item.title)} × ${item.quantity}`)
-        .join(", ");
       const dateValue = order.createdAt ? new Date(order.createdAt).toLocaleDateString("ru-RU") : "";
+      const orderItems = Array.isArray(order.items) ? order.items : [];
+      const thumbnails = orderItems
+        .slice(0, 4)
+        .map((item) => {
+          const productImage = catalogApi?.getProductById?.(item.productId)?.image || "";
+          if (!productImage) {
+            return "";
+          }
+
+          return `
+            <figure class="account-order__thumb">
+              <img src="${escapeHtml(productImage)}" alt="${escapeHtml(item.title || "Товар EXCLUSIVE")}" loading="lazy">
+            </figure>
+          `;
+        })
+        .join("");
+      const extraCount = Math.max(0, orderItems.length - 4);
 
       return `
         <article class="account-order">
-          <div class="account-order__top">
-            <h3 class="account-order__id">${escapeHtml(order.id || "Заказ")}</h3>
-            <span class="account-order__status">${escapeHtml(ORDER_STATUS_LABELS[order.status] || "В работе")}</span>
+          <div class="account-order__head">
+            <div class="account-order__copy">
+              <h3 class="account-order__date">Заказ от ${escapeHtml(dateValue || "Без даты")}</h3>
+              <p class="account-order__id">${escapeHtml(order.id || "Заказ EXCLUSIVE")}</p>
+            </div>
+            <strong class="account-order__total">${window.ExclusiveStore?.formatPrice(order.total || 0) || `${order.total || 0} ₽`}</strong>
           </div>
-          <div class="account-order__meta">
-            <span>${escapeHtml(dateValue)}</span>
-            <span>${window.ExclusiveStore?.formatPrice(order.total || 0) || `${order.total || 0} ₽`}</span>
+          <div class="account-order__gallery" ${thumbnails ? "" : "hidden"}>
+            ${thumbnails}
+            ${extraCount ? `<span class="account-order__more">+${extraCount}</span>` : ""}
           </div>
-          <p class="account-order__items">${itemsText || "Состав заказа уточняется."}</p>
         </article>
       `;
     })
@@ -192,18 +282,19 @@ const loadAccount = async () => {
     fillForm(data.user);
     renderOrders(data.orders || []);
   } catch (error) {
+    if (/сессия/i.test(String(error.message || ""))) {
+      await window.ExclusiveAuth.logout();
+      const redirectTarget = `${window.location.pathname}${window.location.search}`;
+      window.location.href = window.ExclusiveAuth.getAuthUrl({ mode: "login", redirect: redirectTarget });
+      return;
+    }
+
     setNotice(error.message || "Не удалось загрузить кабинет.", "error");
   }
 };
 
 const initEvents = () => {
-  phoneInput?.addEventListener("focus", () => {
-    phoneInput.value = formatPhoneInput(phoneInput.value);
-  });
-
-  phoneInput?.addEventListener("input", () => {
-    phoneInput.value = formatPhoneInput(phoneInput.value);
-  });
+  bindPhoneMask(phoneInput);
 
   accountForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -219,8 +310,15 @@ const initEvents = () => {
       });
       await loadAccount();
       window.ExclusiveAuth.mountProfileLinks(profileLinks);
-      setNotice("Данные сохранены.");
+      setNotice("Успешно.");
     } catch (error) {
+      if (/сессия/i.test(String(error.message || ""))) {
+        await window.ExclusiveAuth.logout();
+        const redirectTarget = `${window.location.pathname}${window.location.search}`;
+        window.location.href = window.ExclusiveAuth.getAuthUrl({ mode: "login", redirect: redirectTarget });
+        return;
+      }
+
       setNotice(error.message || "Не удалось сохранить изменения.", "error");
     }
   });
@@ -245,6 +343,7 @@ const initPage = async () => {
   if (adminLinkNode) {
     adminLinkNode.hidden = !window.ExclusiveAuth?.isAdminUser?.(currentUser);
   }
+  await catalogApi?.ready?.();
   renderMenuGroups();
   initMobileMenu();
   initEvents();

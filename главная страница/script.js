@@ -32,8 +32,8 @@ const createHeroPlaceholder = (label, palette, mobile = false) => {
   return createDataUriSvg(svg);
 };
 
-const catalogHomeHref = "../каталог/index.html";
-const productPageHref = "../страница товара/index.html";
+const catalogHomeHref = "/catalog/";
+const productPageHref = "/product/";
 const catalogApi = window.ExclusiveCatalog;
 
 const heroSlides = [
@@ -86,10 +86,10 @@ const escapeHtml = (value) =>
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
 
-const buildCategoryHref = (category) => `../каталог/index.html?page=${encodeURIComponent(category.key)}`;
+const buildCategoryHref = (category) => `/catalog/?page=${encodeURIComponent(category.key)}`;
 
 const buildProductHref = (product) => {
-  const returnUrl = `../каталог/index.html?page=${encodeURIComponent(product.categoryKey)}`;
+  const returnUrl = `/catalog/?page=${encodeURIComponent(product.categoryKey)}`;
   return `${productPageHref}?id=${encodeURIComponent(product.id)}&return=${encodeURIComponent(returnUrl)}`;
 };
 

@@ -1,9 +1,12 @@
-const CART_PAGE_URL = "../cart/index.html";
-const FALLBACK_RETURN_URL = "../каталог/index.html";
+const CART_PAGE_URL = "/cart/";
+const FALLBACK_RETURN_URL = "/catalog/";
 
 const catalogApi = window.ExclusiveCatalog;
 const params = new URLSearchParams(window.location.search);
-const currentTemplateBase = window.location.pathname.includes("/товар/") ? "../товар/index.html" : "../страница товара/index.html";
+const currentTemplateBase =
+  window.location.pathname.includes("/product-alt/") || window.location.pathname.includes("/товар/")
+    ? "/product-alt/"
+    : "/product/";
 
 const menuGroupsNode = document.getElementById("mobile-menu-groups");
 const currentYearNode = document.getElementById("current-year");
@@ -43,7 +46,7 @@ const fallbackProduct = catalogApi?.getProductById(params.get("id")) || catalogA
 const productData = fallbackProduct
   ? {
       ...fallbackProduct,
-      returnUrl: params.get("return") || `../каталог/index.html?page=${encodeURIComponent(fallbackProduct.categoryKey)}`,
+      returnUrl: params.get("return") || `/catalog/?page=${encodeURIComponent(fallbackProduct.categoryKey)}`,
     }
   : null;
 
@@ -137,13 +140,26 @@ const renderBreadcrumbs = () => {
     return;
   }
 
-  const categoryTitle = productData.categoryTitle || "";
-  const hasSection = Boolean(categoryTitle);
+  let sectionTitle = productData.categoryTitle || "";
+
+  try {
+    const returnUrl = new URL(productData.returnUrl || FALLBACK_RETURN_URL, window.location.origin);
+
+    if (returnUrl.pathname.startsWith("/new/")) {
+      sectionTitle = "Новинки";
+    } else if (returnUrl.pathname.startsWith("/hit/")) {
+      sectionTitle = "Хиты продаж";
+    }
+  } catch {
+    sectionTitle = productData.categoryTitle || "";
+  }
+
+  const hasSection = Boolean(sectionTitle);
   breadcrumbSectionSeparatorNode.hidden = !hasSection;
   breadcrumbSectionNode.hidden = !hasSection;
 
   if (hasSection) {
-    breadcrumbSectionNode.textContent = categoryTitle;
+    breadcrumbSectionNode.textContent = sectionTitle;
     breadcrumbSectionNode.setAttribute("href", productData.returnUrl);
   }
 };

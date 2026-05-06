@@ -19,8 +19,9 @@ except ModuleNotFoundError:
 
 APP_DIR = Path(__file__).resolve().parent
 DATA_DIR = APP_DIR / "data"
-DATA_FILE = DATA_DIR / "store.json"
-DATABASE_FILE = DATA_DIR / "exclusive.sqlite3"
+LEGACY_STORE_FILE = DATA_DIR / "store.json"
+LEGACY_SQLITE_FILE = DATA_DIR / "exclusive.sqlite3"
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://exclusive:exclusive@127.0.0.1:5432/exclusive")
 API_HOST = os.getenv("EXCLUSIVE_API_HOST", "127.0.0.1")
 API_PORT = int(os.getenv("EXCLUSIVE_API_PORT", "9000"))
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
@@ -76,7 +77,8 @@ class Store:
         self.database = database
         self.admin_phones = {normalize_phone(value) for value in (admin_phones or []) if normalize_phone(value)}
         self.lock = threading.RLock()
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+        if not self.database:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
         self.data = self._load()
         if self.database:
             self.database.sync_from_json_store(self.data)
@@ -101,21 +103,21 @@ class Store:
         }
 
     def _load(self):
-        if not self.path.exists():
+        if self.database:
+            data = self.database.load_store_data(self._seed())
+        elif not self.path.exists():
             data = self._seed()
             self._write(data)
-            return data
+        else:
+            try:
+                with self.path.open("r", encoding="utf-8") as source:
+                    data = json.load(source)
+            except (OSError, json.JSONDecodeError):
+                data = self._seed()
+                self._write(data)
 
-        try:
-            with self.path.open("r", encoding="utf-8") as source:
-                data = json.load(source)
-        except (OSError, json.JSONDecodeError):
-            data = self._seed()
-            self._write(data)
-            return data
-
-        if not isinstance(data, dict):
-            data = self._seed()
+            if not isinstance(data, dict):
+                data = self._seed()
 
         data.setdefault("users", [])
         data.setdefault("sessions", [])
@@ -127,7 +129,8 @@ class Store:
         if not any(normalize_phone(user.get("phone")) == self.demo_phone for user in data["users"]):
             data["users"].insert(0, self._seed()["users"][0])
 
-        self._write(data)
+        if not self.database:
+            self._write(data)
         return data
 
     def _write(self, data):
@@ -135,9 +138,11 @@ class Store:
             json.dump(data, target, ensure_ascii=False, indent=2)
 
     def save(self):
-        self._write(self.data)
         if self.database:
             self.database.sync_from_json_store(self.data)
+            return
+
+        self._write(self.data)
 
     def _public_user(self, user):
         return {
@@ -495,7 +500,26 @@ class TelegramBot:
         try:
             with urllib.request.urlopen(request, timeout=30) as response:
                 return json.loads(response.read().decode("utf-8"))
-        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
+        except urllib.error.HTTPError as error:
+            details = ""
+
+            try:
+                details = error.read().decode("utf-8")
+            except Exception:
+                details = str(error)
+
+            print(f"Telegram API {method} failed with HTTP {error.code}: {details}", flush=True)
+
+            try:
+                return json.loads(details)
+            except json.JSONDecodeError:
+                return {"ok": False, "error_code": error.code, "description": details}
+        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as error:
+            print(f"Telegram API {method} request failed: {error}", flush=True)
+            return {}
+        except Exception as error:
+            print(f"Telegram API {method} unexpected error: {error}", flush=True)
+            traceback.print_exc()
             return {}
 
     def send_message(self, chat_id, text, reply_markup=None):
@@ -820,32 +844,70 @@ class TelegramBot:
         if message:
             self.handle_text(message)
 
+    def prepare_polling(self):
+        webhook_info = self.api_call("getWebhookInfo", {})
+        webhook_result = webhook_info.get("result", {}) if isinstance(webhook_info, dict) else {}
+        webhook_url = sanitize_text(webhook_result.get("url"))
+        pending_updates = int(webhook_result.get("pending_update_count") or 0)
+
+        if webhook_url:
+            print("Telegram bot webhook detected. Removing it before polling starts.", flush=True)
+
+        if webhook_url or pending_updates:
+            self.api_call("deleteWebhook", {"drop_pending_updates": False})
+
+        if pending_updates:
+            print(f"Telegram bot pending updates before polling: {pending_updates}", flush=True)
+
     def run(self):
         if not self.token:
             print("Telegram bot token not configured. Bot polling skipped.", flush=True)
             return
 
         print("Telegram bot polling started.", flush=True)
+        self.prepare_polling()
 
         while True:
-            response = self.api_call(
-                "getUpdates",
-                {
-                    "offset": self.offset,
-                    "timeout": 25,
-                    "allowed_updates": ["message", "callback_query"],
-                },
-            )
-            updates = response.get("result", []) if isinstance(response, dict) else []
+            try:
+                response = self.api_call(
+                    "getUpdates",
+                    {
+                        "offset": self.offset,
+                        "timeout": 25,
+                        "allowed_updates": ["message", "callback_query"],
+                    },
+                )
 
-            for update in updates:
-                self.offset = max(self.offset, int(update.get("update_id", 0)) + 1)
-                try:
-                    self.handle_update(update)
-                except Exception:
-                    traceback.print_exc()
+                if isinstance(response, dict) and response.get("ok") is False:
+                    description = sanitize_text(response.get("description"), "unknown error")
+                    print(f"Telegram polling response error: {description}", flush=True)
+                    time.sleep(3.0)
+                    continue
 
-            time.sleep(1.0)
+                updates = response.get("result", []) if isinstance(response, dict) else []
+
+                for update in updates:
+                    self.offset = max(self.offset, int(update.get("update_id", 0)) + 1)
+                    try:
+                        self.handle_update(update)
+                    except Exception:
+                        traceback.print_exc()
+
+                if updates:
+                    self.api_call(
+                        "getUpdates",
+                        {
+                            "offset": self.offset,
+                            "timeout": 0,
+                            "allowed_updates": ["message", "callback_query"],
+                        },
+                    )
+
+                time.sleep(1.0)
+            except Exception:
+                print("Telegram polling loop crashed. Retrying.", flush=True)
+                traceback.print_exc()
+                time.sleep(3.0)
 
 
 class ApiHandler(BaseHTTPRequestHandler):
@@ -1018,8 +1080,12 @@ class ApiHandler(BaseHTTPRequestHandler):
 
 def main():
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    database = SiteDatabase(DATABASE_FILE)
-    store = Store(DATA_FILE, DEMO_PHONE, database=database, admin_phones=ADMIN_PHONES)
+    database = SiteDatabase(
+        DATABASE_URL,
+        legacy_sqlite_path=LEGACY_SQLITE_FILE,
+        legacy_store_path=LEGACY_STORE_FILE,
+    )
+    store = Store(LEGACY_STORE_FILE, DEMO_PHONE, database=database, admin_phones=ADMIN_PHONES)
     bot = TelegramBot(BOT_TOKEN, BOT_USERNAME, MANAGER_CHAT_IDS, MANAGER_USERNAMES, store)
 
     ApiHandler.store = store

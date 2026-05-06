@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" fill="none">
+  <rect width="1200" height="630" rx="36" fill="#111111"/>
+  <circle cx="157" cy="110" r="130" fill="#2B2B2B"/>
+  <circle cx="1046" cy="530" r="170" fill="#2B2B2B"/>
+  <rect x="82" y="84" width="1036" height="462" rx="28" fill="url(#paint0_linear_1_2)" fill-opacity="0.14"/>
+  <path d="M207 378V252H343V294H259V304H332V344H259V378H207Z" fill="white"/>
+  <path d="M391 378V252H450L497 320L544 252H603V378H551V317L519 360H475L443 317V378H391Z" fill="white"/>
+  <path d="M655 378V252H822V296H707V302H813V343H707V378H655Z" fill="white"/>
+  <path d="M867 378V252H927V378H867ZM927 316L993 252H1067L993 317L1070 378H991L927 327V316Z" fill="white"/>
+  <text x="600" y="186" fill="#F3F3F3" font-family="Arial, sans-serif" font-size="34" font-weight="600" letter-spacing="6" text-anchor="middle">EXCLUSIVE</text>
+  <text x="600" y="448" fill="#D6D1C8" font-family="Arial, sans-serif" font-size="32" font-weight="400" text-anchor="middle">Женская одежда, обувь и трендовые коллекции</text>
+  <defs>
+    <linearGradient id="paint0_linear_1_2" x1="118" y1="96" x2="1118" y2="541" gradientUnits="userSpaceOnUse">
+      <stop stop-color="white"/>
+      <stop offset="1" stop-color="#B68F62"/>
+    </linearGradient>
+  </defs>
+</svg>

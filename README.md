@@ -4,7 +4,7 @@
 
 - витрина магазина на `nginx`;
 - backend API на Python;
-- SQLite-база пользователей, товаров и заказов;
+- PostgreSQL-база пользователей, товаров и заказов;
 - авторизация по номеру телефона;
 - админка каталога;
 - Telegram-бот для продолжения оформления заказа.
@@ -36,8 +36,9 @@ docker compose up -d --build
 
 ## Данные проекта
 
-- SQLite база: `backend/data/exclusive.sqlite3`
-- JSON резерв: `backend/data/store.json`
+- PostgreSQL контейнер: `exclusive-postgres`
+- PostgreSQL volume: `postgres_data`
+- legacy-источники миграции: `backend/data/exclusive.sqlite3`, `backend/data/store.json`
 - изображения товаров: `uploads/products`
 
 ## Остановка

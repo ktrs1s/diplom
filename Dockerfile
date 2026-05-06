@@ -11,6 +11,13 @@ COPY account ./account
 COPY admin ./admin
 COPY auth ./auth
 COPY cart ./cart
+COPY catalog ./catalog
+COPY hit ./hit
+COPY home ./home
+COPY new ./new
+COPY product ./product
+COPY product-alt ./product-alt
+COPY ["фото", "./фото"]
 COPY shared ./shared
 COPY uploads ./uploads
 COPY ["главная страница", "./главная страница"]

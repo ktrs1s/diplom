@@ -2,42 +2,42 @@ const menuGroups = [
   {
     title: "Верхняя одежда",
     items: ["Пальто", "Куртки", "Ветровки", "Джинсовые куртки"],
-    href: "../каталог/index.html?page=outerwear",
+    href: "/catalog/?page=outerwear",
   },
   {
     title: "Джинсы",
     items: [],
-    href: "../каталог/index.html?page=jeans",
+    href: "/catalog/?page=jeans",
   },
   {
     title: "Брюки",
     items: [],
-    href: "../каталог/index.html?page=trousers",
+    href: "/catalog/?page=trousers",
   },
   {
     title: "Костюмы",
     items: ["Спортивные костюмы", "Классические костюмы", "Летние костюмы"],
-    href: "../каталог/index.html?page=suits",
+    href: "/catalog/?page=suits",
   },
   {
     title: "Джемперы и свитеры",
     items: [],
-    href: "../каталог/index.html?page=knitwear",
+    href: "/catalog/?page=knitwear",
   },
   {
     title: "Футболки, поло и лонгсливы",
     items: [],
-    href: "../каталог/index.html?page=tops",
+    href: "/catalog/?page=tops",
   },
   {
     title: "Обувь",
     items: ["Лето 2026", "Туфли", "Сапоги и ботильоны", "Кроссовки и кеды"],
-    href: "../каталог/index.html?page=shoes",
+    href: "/catalog/?page=shoes",
   },
   {
     title: "Аксессуары",
     items: ["Шапки", "Кепки", "Платки", "Сумки", "Шарфы"],
-    href: "../каталог/index.html?page=accessories",
+    href: "/catalog/?page=accessories",
   },
 ];
 

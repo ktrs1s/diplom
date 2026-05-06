@@ -4,7 +4,7 @@ Backend работает в отдельном Docker-контейнере и п
 
 Что он делает:
 
-- хранит пользователей, категории, товары и заказы в SQLite;
+- хранит пользователей, категории, товары и заказы в PostgreSQL;
 - обслуживает вход, регистрацию и личный кабинет;
 - принимает изменения из админки;
 - создает заказ из корзины;
@@ -34,13 +34,14 @@ EXCLUSIVE_DEMO_PHONE
 EXCLUSIVE_ADMIN_PHONES
 EXCLUSIVE_API_HOST
 EXCLUSIVE_API_PORT
+DATABASE_URL
 ```
 
 По умолчанию backend в контейнере слушает `0.0.0.0:9000`.
 
 ## Хранилище данных
 
-- `backend/data/exclusive.sqlite3`
-- `backend/data/store.json`
+- PostgreSQL в контейнере `exclusive-postgres`
+- docker volume `postgres_data`
 
-Каталог синхронизируется между фронтом, админкой и SQLite автоматически.
+Legacy-файлы `backend/data/exclusive.sqlite3` и `backend/data/store.json` используются только для первичной миграции в PostgreSQL.

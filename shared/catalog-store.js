@@ -166,6 +166,8 @@
     ],
   };
 
+  const IMAGE_FILE_PATTERN = /\.(avif|gif|jpe?g|png|svg|webp)$/i;
+
   const DETAIL_PRODUCT_SEED = {
     id: "exclusive-trench-cropped-black",
     categoryKey: "outerwear",
@@ -507,7 +509,7 @@
       return seed.gallery.map((entry) => {
         if (entry.src) {
           return {
-            src: sanitizeText(entry.src, ""),
+            src: normalizeImageSource(entry.src),
             alt: sanitizeText(entry.alt, seed.title),
           };
         }
@@ -526,7 +528,7 @@
     }
 
     if (sanitizeText(seed.image, "")) {
-      return [{ src: sanitizeText(seed.image, ""), alt: seed.title }];
+      return [{ src: normalizeImageSource(seed.image), alt: seed.title }];
     }
 
     const placeholder = createProductPlaceholder(makeLabel(seed.label || seed.title), seed.palette || category.palette || DEFAULT_PALETTE);
@@ -542,7 +544,7 @@
       title,
       description: sanitizeText(category?.description, `Раздел ${title} в каталоге EXCLUSIVE.`),
       palette,
-      image: sanitizeText(category?.image, "") || buildCategoryImage({ title, palette }),
+      image: normalizeImageSource(category?.image) || buildCategoryImage({ title, palette }),
       showOnHome: Boolean(category?.showOnHome),
       createdAt: Number(category?.createdAt) || Date.now(),
     };
@@ -580,7 +582,7 @@
       colors,
       palette,
       label: sanitizeText(product?.label, makeLabel(title)),
-      image: sanitizeText(product?.image, gallery[0]?.src || ""),
+      image: normalizeImageSource(product?.image) || gallery[0]?.src || "",
       gallery,
       description: sanitizeText(product?.description, `${title}. Новая модель EXCLUSIVE для повседневного гардероба.`),
       composition: sanitizeText(product?.composition, "Состав уточняется в карточке товара EXCLUSIVE."),
@@ -695,6 +697,42 @@
     } catch (error) {
       return;
     }
+  };
+
+  const normalizeImageSource = (value) => {
+    const raw = sanitizeText(value, "").replaceAll("\\", "/");
+
+    if (!raw) {
+      return "";
+    }
+
+    if (raw.startsWith("data:") || /^https?:\/\//i.test(raw) || raw.startsWith("//")) {
+      return raw;
+    }
+
+    const uploadsPathIndex = raw.indexOf("/uploads/");
+    if (uploadsPathIndex >= 0) {
+      return raw.slice(uploadsPathIndex);
+    }
+
+    const photoPathIndex = raw.indexOf("/фото/");
+    if (photoPathIndex >= 0) {
+      return raw.slice(photoPathIndex);
+    }
+
+    if (raw.startsWith("uploads/") || raw.startsWith("фото/")) {
+      return `/${raw}`;
+    }
+
+    if (raw.startsWith("/")) {
+      return raw;
+    }
+
+    if (IMAGE_FILE_PATTERN.test(raw)) {
+      return `/uploads/products/${raw}`;
+    }
+
+    return raw;
   };
 
   const normalizeCatalog = (rawData) => {
@@ -873,7 +911,7 @@
   const getMenuGroups = () =>
     getCategories().map((category) => ({
       title: category.title,
-      href: `../каталог/index.html?page=${encodeURIComponent(category.key)}`,
+      href: `/catalog/?page=${encodeURIComponent(category.key)}`,
       items: [],
     }));
 
@@ -972,9 +1010,10 @@
       ],
       existingProduct?.palette || category?.palette || DEFAULT_PALETTE,
     );
+    const normalizedImage = normalizeImageSource(payload?.image);
     const currentLabel = existingProduct?.label || makeLabel(existingProduct?.title || "Товар EXCLUSIVE");
     const hasMediaChanges =
-      sanitizeText(payload?.image, "") !== "" ||
+      normalizedImage !== "" ||
       title !== (existingProduct?.title || "") ||
       nextLabel !== currentLabel ||
       palette[0] !== (existingProduct?.palette?.[0] || "") ||
@@ -994,12 +1033,30 @@
       colors: normalizeColorList(payload?.colors ?? existingProduct?.colors, palette),
       palette,
       label: nextLabel,
-      image: hasMediaChanges ? sanitizeText(payload?.image, "") : sanitizeText(existingProduct?.image, ""),
+      image: hasMediaChanges ? normalizedImage : normalizeImageSource(existingProduct?.image),
       gallery: hasMediaChanges ? [] : Array.isArray(existingProduct?.gallery) ? existingProduct.gallery : [],
       description: sanitizeText(payload?.description, existingProduct?.description || `${title}. Новая модель EXCLUSIVE для повседневного гардероба.`),
       composition: sanitizeText(payload?.composition, existingProduct?.composition || "Состав уточняется в карточке товара EXCLUSIVE."),
-      care: Array.isArray(existingProduct?.care) && existingProduct.care.length ? existingProduct.care : buildDefaultCare(),
-      features: Array.isArray(existingProduct?.features) && existingProduct.features.length ? existingProduct.features : [],
+      care: Array.isArray(payload?.care) && payload.care.length
+        ? payload.care.map((item) => sanitizeText(item, "")).filter(Boolean)
+        : Array.isArray(existingProduct?.care) && existingProduct.care.length
+          ? existingProduct.care
+          : buildDefaultCare(),
+      features: Array.isArray(payload?.features) && payload.features.length
+        ? payload.features
+            .map((feature) => {
+              if (!Array.isArray(feature)) {
+                return null;
+              }
+
+              const name = sanitizeText(feature[0], "");
+              const value = sanitizeText(feature[1], "");
+              return name ? [name, value] : null;
+            })
+            .filter(Boolean)
+        : Array.isArray(existingProduct?.features) && existingProduct.features.length
+          ? existingProduct.features
+          : [],
       sizeTable: buildSizeTable(payload?.sizes ?? existingProduct?.sizes),
       createdAt: existingProduct?.createdAt || Date.now(),
       orderIndex: existingProduct?.orderIndex ?? minOrderIndex - 1,

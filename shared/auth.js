@@ -4,9 +4,10 @@
   const SESSION_STORAGE_KEY = "exclusive-session-v1";
   const LOCAL_ORDERS_STORAGE_KEY = "exclusive-orders-v1";
   const AUTH_EVENT = "exclusive:authchange";
+  const SESSION_TTL_MS = 15 * 60 * 1000;
 
-  const buildAuthPageUrl = () => new URL("../auth/index.html", window.location.href);
-  const buildAccountPageUrl = () => new URL("../account/index.html", window.location.href);
+  const buildAuthPageUrl = () => new URL("/auth/", window.location.origin);
+  const buildAccountPageUrl = () => new URL("/account/", window.location.origin);
 
   const sanitizeText = (value, fallback = "") => {
     if (typeof value !== "string") {
@@ -81,6 +82,14 @@
   const writeJson = (key, value) => {
     try {
       window.localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      return;
+    }
+  };
+
+  const removeSessionValue = () => {
+    try {
+      window.localStorage.removeItem(SESSION_STORAGE_KEY);
     } catch (error) {
       return;
     }
@@ -162,11 +171,27 @@
     }
 
     if (!session.user || !session.user.phone) {
+      removeSessionValue();
       return null;
+    }
+
+    const lastSeenAt = Number(session.lastSeenAt) || 0;
+
+    if (!lastSeenAt || Date.now() - lastSeenAt > SESSION_TTL_MS) {
+      removeSessionValue();
+      return null;
+    }
+
+    if (Date.now() - lastSeenAt > 10_000) {
+      writeJson(SESSION_STORAGE_KEY, {
+        ...session,
+        lastSeenAt: Date.now(),
+      });
     }
 
     return {
       sessionToken: sanitizeText(session.sessionToken),
+      lastSeenAt,
       user: {
         id: sanitizeText(session.user.id),
         firstName: sanitizeText(session.user.firstName),
@@ -189,6 +214,7 @@
   const saveSession = ({ user, sessionToken = "" }) => {
     writeJson(SESSION_STORAGE_KEY, {
       sessionToken: sanitizeText(sessionToken),
+      lastSeenAt: Date.now(),
       user: {
         id: sanitizeText(user?.id),
         firstName: sanitizeText(user?.firstName),
@@ -200,11 +226,7 @@
   };
 
   const clearSession = () => {
-    try {
-      window.localStorage.removeItem(SESSION_STORAGE_KEY);
-    } catch (error) {
-      return;
-    }
+    removeSessionValue();
 
     emitAuthChange();
   };
@@ -251,7 +273,14 @@
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok || data.success === false) {
-      const nextError = new Error(data.error || "Не удалось выполнить запрос.");
+      const rawError = data.error || "Не удалось выполнить запрос.";
+      const isSessionError = /сессия/i.test(String(rawError));
+
+      if (isSessionError) {
+        clearSession();
+      }
+
+      const nextError = new Error(isSessionError ? "Сессия истекла. Войди снова." : rawError);
       nextError.isApiResponse = true;
       throw nextError;
     }

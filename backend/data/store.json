@@ -34,20 +34,20 @@
       "createdAt": "2026-05-01T22:21:56Z"
     },
     {
-      "token": "7deeb626f6624c01a712b32f8ad59f1f",
+      "token": "91a7775fd3004d00857748e496319882",
       "userId": "demo-user",
-      "createdAt": "2026-05-03T11:18:52Z"
+      "createdAt": "2026-05-03T16:37:50Z"
     },
     {
-      "token": "e3849094bfdb43038a4f574ffee3853e",
+      "token": "de4c7f7cbd6f4489b0d30be11bd7a94c",
       "userId": "user-02c14c6b8e54",
-      "createdAt": "2026-05-03T14:18:00Z"
+      "createdAt": "2026-05-03T16:38:22Z"
     }
   ],
   "orders": [
     {
       "id": "EX-20260503-0006",
-      "status": "draft",
+      "status": "pending_manager",
       "createdAt": "2026-05-03T10:41:03Z",
       "customer": {
         "id": "demo-user",
@@ -82,6 +82,11 @@
           "status": "draft",
           "at": "2026-05-03T10:41:03Z",
           "source": "site"
+        },
+        {
+          "status": "pending_manager",
+          "at": "2026-05-03T16:03:14Z",
+          "source": "bot"
         }
       ]
     },

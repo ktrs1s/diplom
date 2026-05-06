@@ -20,7 +20,7 @@ const phoneInputs = [
 const catalogApi = window.ExclusiveCatalog;
 const authParams = new URLSearchParams(window.location.search);
 const initialMode = authParams.get("mode") === "register" ? "register" : "login";
-const redirectTarget = authParams.get("redirect") || "../главная страница/index.html";
+const redirectTarget = authParams.get("redirect") || "/";
 const nextIntent = authParams.get("intent") || "";
 const POST_AUTH_INTENT_STORAGE_KEY = "exclusive-post-auth-intent-v1";
 
@@ -33,23 +33,25 @@ const escapeHtml = (value) =>
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
 
-const formatPhoneInput = (value) => {
+const getPhoneDigits = (value) => {
   let digits = String(value || "").replace(/[^\d]/g, "");
 
   if (digits.startsWith("7") || digits.startsWith("8")) {
     digits = digits.slice(1);
   }
 
-  digits = digits.slice(0, 10);
+  return digits.slice(0, 10);
+};
 
+const formatPhoneInput = (value) => {
+  const digits = getPhoneDigits(value);
   let result = "+7";
 
   if (!digits) {
     return result;
   }
 
-  result += " (";
-  result += digits.slice(0, 3);
+  result += ` (${digits.slice(0, 3)}`;
 
   if (digits.length >= 3) {
     result += ")";
@@ -68,6 +70,62 @@ const formatPhoneInput = (value) => {
   }
 
   return result;
+};
+
+const bindPhoneMask = (input) => {
+  if (!input) {
+    return;
+  }
+
+  const applyMask = () => {
+    input.value = formatPhoneInput(input.value);
+  };
+
+  input.addEventListener("focus", applyMask);
+  input.addEventListener("input", applyMask);
+  input.addEventListener("keydown", (event) => {
+    if (!["Backspace", "Delete"].includes(event.key)) {
+      return;
+    }
+
+    const start = input.selectionStart ?? input.value.length;
+    const end = input.selectionEnd ?? start;
+
+    if (start !== end) {
+      return;
+    }
+
+    const rawValue = input.value;
+    const digits = getPhoneDigits(rawValue);
+    const digitsBeforeCursor = getPhoneDigits(rawValue.slice(0, start)).length;
+    const targetIndex = event.key === "Backspace" ? start - 1 : start;
+    const targetChar = rawValue[targetIndex] || "";
+
+    if (start <= 2 && event.key === "Backspace") {
+      event.preventDefault();
+      input.value = "+7";
+      return;
+    }
+
+    if (targetChar && /\D/.test(targetChar)) {
+      event.preventDefault();
+      const removeIndex = event.key === "Backspace" ? digitsBeforeCursor - 1 : digitsBeforeCursor;
+
+      if (removeIndex < 0 || removeIndex >= digits.length) {
+        return;
+      }
+
+      const nextDigits = `${digits.slice(0, removeIndex)}${digits.slice(removeIndex + 1)}`;
+      input.value = formatPhoneInput(nextDigits);
+      const nextCaret = Math.max(2, Math.min(input.value.length, start - (event.key === "Backspace" ? 1 : 0)));
+
+      window.requestAnimationFrame(() => {
+        input.setSelectionRange(nextCaret, nextCaret);
+      });
+    }
+  });
+
+  applyMask();
 };
 
 const setNotice = (message, type = "") => {
@@ -159,7 +217,6 @@ const redirectAfterAuth = () => {
     try {
       window.sessionStorage.setItem(POST_AUTH_INTENT_STORAGE_KEY, "checkout");
     } catch (error) {
-      // If session storage is unavailable, we still continue to the cart flow.
     }
 
     window.location.href = redirectTarget;
@@ -167,7 +224,7 @@ const redirectAfterAuth = () => {
   }
 
   if (window.ExclusiveAuth?.isAdminUser?.(window.ExclusiveAuth?.getCurrentUser?.())) {
-    window.location.href = "../admin/index.html";
+    window.location.href = "/admin/";
     return;
   }
 
@@ -181,15 +238,7 @@ const handleSuccess = (message) => {
 
 const initEvents = () => {
   phoneInputs.forEach((input) => {
-    input.value = formatPhoneInput(input.value);
-
-    input.addEventListener("focus", () => {
-      input.value = formatPhoneInput(input.value);
-    });
-
-    input.addEventListener("input", () => {
-      input.value = formatPhoneInput(input.value);
-    });
+    bindPhoneMask(input);
   });
 
   authTabs.forEach((button) => {
@@ -233,6 +282,11 @@ const initEvents = () => {
 };
 
 const initPage = () => {
+  if (window.ExclusiveAuth?.getCurrentUser?.()) {
+    redirectAfterAuth();
+    return;
+  }
+
   window.ExclusiveStore?.mountCartBadge(headerCartBadge);
   window.ExclusiveAuth?.mountProfileLinks(profileLinks);
   renderMenuGroups();

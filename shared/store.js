@@ -45,7 +45,7 @@
       size,
       color,
       image: sanitizeText(item?.image, ""),
-      href: sanitizeText(item?.href, "../главная страница/index.html"),
+      href: sanitizeText(item?.href, "/"),
       priceValue,
       priceLabel: sanitizeText(item?.priceLabel, formatPrice(priceValue)),
       quantity,

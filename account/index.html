@@ -9,16 +9,18 @@
   <meta property="og:locale" content="ru_RU">
   <meta property="og:title" content="Личный кабинет | EXCLUSIVE">
   <meta property="og:description" content="Личные данные и история заказов EXCLUSIVE.">
-  <meta property="og:image" content="../главная страница/cover.svg">
+  <meta property="og:image" content="/home/cover.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="icon" type="image/svg+xml" href="../главная страница/favicon.svg">
-  <link rel="stylesheet" href="../главная страница/styles.css?v=20260503-admin-builder-1">
-  <link rel="stylesheet" href="styles.css?v=20260503-admin-builder-1">
+  <link rel="icon" type="image/svg+xml" href="/home/favicon.svg">
+  <link rel="stylesheet" href="/home/styles.css?v=20260506-layout-2">
+  <link rel="stylesheet" href="styles.css?v=20260503-session-2">
+  <script src="/shared/metrika.js"></script>
 </head>
 <body class="account-body">
-  <div class="mobile-menu-backdrop" id="mobile-menu-backdrop" hidden></div>
+    <noscript><div><img src="https://mc.yandex.ru/watch/109059725" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<div class="mobile-menu-backdrop" id="mobile-menu-backdrop" hidden></div>
 
   <header class="site-header" id="site-header">
     <div class="container-fluid site-header__row">
@@ -30,33 +32,32 @@
         </button>
       </div>
 
-      <a class="site-logo" href="../главная страница/index.html#top" aria-label="EXCLUSIVE, перейти в начало">
+      <a class="site-logo" href="/#top" aria-label="EXCLUSIVE, перейти в начало">
         <span class="site-logo__text">EXCLUSIVE</span>
       </a>
 
       <nav class="site-nav" aria-label="Основная навигация">
-        <a class="site-nav__link" href="../каталог/index.html">Каталог</a>
-        <a class="site-nav__link" href="../главная страница/index.html#new-arrivals">Новинки</a>
-        <a class="site-nav__link" href="../главная страница/index.html#popular">Хиты продаж</a>
-        <a class="site-nav__link" href="../главная страница/index.html#buyers">Покупателям</a>
-        <a class="site-nav__link" href="../главная страница/index.html#footer">Блог</a>
+        <a class="site-nav__link" href="/catalog/">Каталог</a>
+        <a class="site-nav__link" href="/new/">Новинки</a>
+        <a class="site-nav__link" href="/hit/">Хиты продаж</a>
+        <a class="site-nav__link" href="/#buyers">Покупателям</a>
       </nav>
 
       <div class="site-actions" aria-label="Действия пользователя">
-        <a class="header-icon" data-profile-link href="../account/index.html" aria-label="Профиль">
+        <a class="header-icon" data-profile-link href="/account/" aria-label="Профиль">
           <svg viewBox="0 0 24 25" aria-hidden="true">
             <circle cx="12" cy="7.75" r="3.75"></circle>
             <path d="M5 20.5C5 16.91 8.134 14 12 14C15.866 14 19 16.91 19 20.5"></path>
           </svg>
         </a>
-        <a class="header-icon" id="header-cart-link" href="../cart/index.html" aria-label="Корзина">
+        <a class="header-icon" id="header-cart-link" href="/cart/" aria-label="Корзина">
           <svg viewBox="0 0 20 23" aria-hidden="true">
             <path d="M13.462 7.923V4.462C13.462 2.549 11.912 1 10 1C8.088 1 6.539 2.549 6.539 4.462V7.923"></path>
             <path d="M18.89 20.67C18.949 21.259 18.487 21.77 17.895 21.77H2.105C1.513 21.77 1.051 21.259 1.11 20.67L2.295 8.824C2.346 8.313 2.776 7.923 3.29 7.923H16.71C17.224 7.923 17.654 8.313 17.705 8.824L18.89 20.67Z"></path>
           </svg>
           <span class="header-icon__badge" id="header-cart-badge" hidden>1</span>
         </a>
-        <a class="header-icon" href="../главная страница/index.html#footer" aria-label="Избранное">
+        <a class="header-icon" href="/#footer" aria-label="Избранное">
           <svg viewBox="0 0 24 25" aria-hidden="true">
             <path d="M12 20.5L4.9 13.4C3.7 12.2 3 10.64 3 8.97C3 5.56 7.04 3.83 9.5 6.15L12 8.5L14.5 6.15C16.96 3.83 21 5.56 21 8.97C21 10.64 20.3 12.2 19.1 13.4L12 20.5"></path>
           </svg>
@@ -78,11 +79,10 @@
       </div>
 
       <nav class="mobile-menu__nav" aria-label="Мобильная навигация">
-        <a href="../каталог/index.html">Каталог</a>
-        <a href="../главная страница/index.html#new-arrivals">Новинки</a>
-        <a href="../главная страница/index.html#popular">Хиты продаж</a>
-        <a href="../главная страница/index.html#buyers">Покупателям</a>
-        <a href="../главная страница/index.html#footer">Блог</a>
+        <a href="/catalog/">Каталог</a>
+        <a href="/new/">Новинки</a>
+        <a href="/hit/">Хиты продаж</a>
+        <a href="/#buyers">Покупателям</a>
       </nav>
 
       <div class="mobile-menu__groups" id="mobile-menu-groups"></div>
@@ -105,7 +105,7 @@
               <div class="account-panel__header">
                 <h2 class="account-panel__title" id="account-form-title">Профиль</h2>
                 <div class="account-panel__actions">
-                  <a class="account-panel__admin-link" id="account-admin-link" href="../admin/index.html" hidden>Открыть админку</a>
+                  <a class="account-panel__admin-link" id="account-admin-link" href="/admin/" hidden>Открыть админку</a>
                   <button class="account-panel__logout" id="logout-button" type="button">Выйти</button>
                 </div>
               </div>
@@ -147,28 +147,23 @@
   <footer class="site-footer" id="footer">
     <div class="container-fluid site-footer__grid">
       <div class="site-footer__brand">
-        <a class="site-footer__logo" href="#top">EXCLUSIVE</a>
+        <a class="site-footer__logo" href="/#top">EXCLUSIVE</a>
         <a class="site-footer__legal" href="#">Политика конфиденциальности</a>
-        <a class="site-footer__legal" href="#">Условия обмена и возврата</a>
         <p class="site-footer__copy">© <span id="current-year">2026</span> EXCLUSIVE Все права защищены</p>
       </div>
 
       <nav class="site-footer__column" aria-labelledby="footer-catalog-title">
         <h2 class="site-footer__title" id="footer-catalog-title">Каталог</h2>
-        <a href="../каталог/index.html">Одежда</a>
-        <a href="../каталог/index.html?page=shoes">Обувь</a>
-        <a href="../главная страница/index.html#new-arrivals">Новинки</a>
-        <a href="../главная страница/index.html#popular">Хиты продаж</a>
-        <a href="../каталог/index.html">Sale</a>
+        <a href="/catalog/">Одежда</a>
+        <a href="/catalog/?page=shoes">Обувь</a>
+        <a href="/new/">Новинки</a>
+        <a href="/catalog/">Распродажа</a>
       </nav>
 
-      <nav class="site-footer__column" id="buyers" aria-labelledby="footer-buyers-title">
-        <h2 class="site-footer__title" id="footer-buyers-title">Программа лояльности</h2>
-        <a href="../главная страница/index.html#footer">Условия обмена и возврата</a>
-        <a href="../главная страница/index.html#footer">Доставка и оплата</a>
-        <a href="../главная страница/index.html#footer">О компании</a>
-        <a href="../главная страница/index.html#footer">Контакты</a>
-        <a href="../главная страница/index.html#footer">Блог</a>
+      <nav class="site-footer__column" aria-labelledby="footer-info-title">
+        <h2 class="site-footer__title" id="footer-info-title">Информация</h2>
+        <a href="/#footer">О компании</a>
+        <a href="/#footer">Контакты</a>
       </nav>
 
       <section class="site-footer__contacts" aria-labelledby="footer-contacts-title">
@@ -176,11 +171,6 @@
         <p>Адрес: г. Гуково, ул. Комсомольская 56</p>
         <p>Телефон: <a href="tel:+79953980243">+7 (995) 398 02 43</a></p>
         <div class="site-footer__socials" aria-label="Социальные сети">
-          <a href="#" aria-label="VK">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4.5 7.5C4.631 13.414 7.62 17 12.855 17H13.152V13.612C15.06 13.802 16.503 15.194 17.082 17H19.78C19.039 14.311 17.09 12.826 15.875 12.262C17.09 11.561 18.793 9.857 19.2 7.5H16.75C16.219 9.416 14.647 11.12 13.152 11.284V7.5H10.702V14.128C9.188 13.749 7.278 11.913 7.194 7.5H4.5Z"></path>
-            </svg>
-          </a>
           <a data-telegram-link href="https://t.me/" target="_blank" rel="noreferrer" aria-label="Telegram">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M21.24 4.582L18.177 19.032C17.946 20.052 17.343 20.306 16.485 19.825L11.818 16.384L9.566 18.552C9.317 18.801 9.108 19.01 8.627 19.01L8.964 14.258L17.632 6.43C18.009 6.093 17.55 5.91 17.047 6.247L6.338 12.992L1.731 11.555C0.73 11.239 0.712 10.548 1.94 10.066L19.954 3.118C20.792 2.808 21.525 3.304 21.24 4.582Z"></path>
@@ -198,11 +188,11 @@
     </div>
   </footer>
 
-  <script src="../shared/site-config.js?v=20260503-admin-builder-1"></script>
-  <script src="../shared/store.js?v=20260503-admin-builder-1"></script>
-  <script src="../shared/catalog-store.js?v=20260503-admin-builder-1"></script>
-  <script src="../shared/auth.js?v=20260503-admin-builder-1"></script>
-  <script src="../shared/checkout.js?v=20260503-admin-builder-1"></script>
-  <script src="script.js?v=20260503-admin-builder-1"></script>
+  <script src="../shared/site-config.js?v=20260503-session-2"></script>
+  <script src="../shared/store.js?v=20260503-session-2"></script>
+  <script src="../shared/catalog-store.js?v=20260503-session-2"></script>
+  <script src="../shared/auth.js?v=20260503-session-2"></script>
+  <script src="../shared/checkout.js?v=20260503-session-2"></script>
+  <script src="script.js?v=20260503-session-2"></script>
 </body>
 </html>

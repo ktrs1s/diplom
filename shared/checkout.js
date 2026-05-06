@@ -152,7 +152,7 @@
       intent: "checkout",
     });
 
-    window.location.href = authUrl || "../auth/index.html";
+    window.location.href = authUrl || "/auth/";
   };
 
   const consumePendingIntent = () => {
