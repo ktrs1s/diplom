@@ -4,6 +4,7 @@ const pageQueryKey = urlParams.get("page");
 const ITEMS_PER_PAGE = 20;
 
 const catalogApi = window.ExclusiveCatalog;
+const favoritesApi = window.ExclusiveFavorites;
 
 const breadcrumbCatalogLinkNode = document.getElementById("breadcrumb-catalog-link");
 const breadcrumbCurrentSeparatorNode = document.getElementById("breadcrumb-current-separator");
@@ -23,7 +24,6 @@ const headerToggle = document.getElementById("catalog-header-toggle");
 const drawerNode = document.getElementById("catalog-drawer");
 const drawerClose = document.getElementById("catalog-drawer-close");
 const overlayNode = document.getElementById("catalog-overlay");
-let catalogRefreshHandled = false;
 
 let activeFilter = urlParams.get("sub") || "all";
 let currentPageNumber = Number.parseInt(urlParams.get("pageNum") || "1", 10);
@@ -39,9 +39,17 @@ const escapeHtml = (value) =>
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
 
-const categories = catalogApi?.getCategories() || [];
-const categoriesMap = new Map(categories.map((category) => [category.key, category]));
-const currentCategory = categoriesMap.get(pageQueryKey || "") || null;
+let categories = [];
+let categoriesMap = new Map();
+let currentCategory = null;
+
+const refreshCatalogContext = () => {
+  categories = catalogApi?.getCategories() || [];
+  categoriesMap = new Map(categories.map((category) => [category.key, category]));
+  currentCategory = categoriesMap.get(pageQueryKey || "") || null;
+};
+
+refreshCatalogContext();
 
 const getCurrentProducts = () => {
   if (!catalogApi) {
@@ -89,6 +97,28 @@ const buildCategoryUrl = (categoryKey = "", subKey = "all") => {
 const buildProductHref = (product) => {
   const returnUrl = buildCategoryUrl(product.categoryKey, product.subKey || "all");
   return `${PRODUCT_PAGE_URL}?id=${encodeURIComponent(product.id)}&return=${encodeURIComponent(returnUrl)}`;
+};
+
+const renderFavoriteIcon = () => `
+  <svg viewBox="0 0 24 25" aria-hidden="true">
+    <path d="M12 20.5L4.9 13.4C3.7 12.2 3 10.64 3 8.97C3 5.56 7.04 3.83 9.5 6.15L12 8.5L14.5 6.15C16.96 3.83 21 5.56 21 8.97C21 10.64 20.3 12.2 19.1 13.4L12 20.5"></path>
+  </svg>
+`;
+
+const renderFavoriteButton = (product) => {
+  const isFavorite = favoritesApi?.hasFavorite?.(product.id) || false;
+
+  return `
+    <button
+      class="catalog-card__favorite ${isFavorite ? "is-active" : ""}"
+      type="button"
+      data-favorite-product="${escapeHtml(product.id)}"
+      aria-label="${isFavorite ? "Убрать из избранного" : "Добавить в избранное"}"
+      aria-pressed="${String(isFavorite)}"
+    >
+      ${renderFavoriteIcon()}
+    </button>
+  `;
 };
 
 const normalizeFilter = (subcategories) => {
@@ -269,6 +299,7 @@ const renderCatalogTree = (target) => {
 
 const renderProductCard = (product) => `
   <article class="catalog-card">
+    ${renderFavoriteButton(product)}
     <a class="catalog-card__media" href="${buildProductHref(product)}">
       <img src="${product.image}" alt="${escapeHtml(product.title)}" loading="lazy">
     </a>
@@ -301,6 +332,28 @@ const renderProducts = () => {
   catalogProductsNode.innerHTML = visibleProducts.map(renderProductCard).join("");
   catalogEmptyNode.style.display = products.length === 0 ? "block" : "none";
   renderPagination(products.length);
+};
+
+const syncFavoriteButton = (button, isFavorite) => {
+  button.classList.toggle("is-active", isFavorite);
+  button.setAttribute("aria-pressed", String(isFavorite));
+  button.setAttribute("aria-label", isFavorite ? "Убрать из избранного" : "Добавить в избранное");
+};
+
+const initFavoriteButtons = () => {
+  catalogProductsNode?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-favorite-product]");
+
+    if (!button) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const isFavorite = favoritesApi?.toggleFavorite?.(button.dataset.favoriteProduct) ?? false;
+    syncFavoriteButton(button, isFavorite);
+  });
 };
 
 const renderPageMeta = () => {
@@ -387,16 +440,18 @@ const mountFooter = () => {
   if (currentYearNode) {
     currentYearNode.textContent = String(new Date().getFullYear());
   }
-
-  document.querySelectorAll("[data-telegram-link]").forEach((link) => {
-    link.setAttribute("href", window.ExclusiveSiteConfig?.getTelegramBotUrl?.() || "https://t.me/");
-  });
 };
 
-renderPageMeta();
-renderCatalogTree(catalogTreeNode);
-renderCatalogTree(catalogDrawerTreeNode);
-renderProducts();
+const mountCatalogPage = () => {
+  refreshCatalogContext();
+  renderPageMeta();
+  renderCatalogTree(catalogTreeNode);
+  renderCatalogTree(catalogDrawerTreeNode);
+  renderProducts();
+};
+
+mountCatalogPage();
+initFavoriteButtons();
 initDrawer();
 mountFooter();
 window.ExclusiveStore?.mountCartBadge(headerCartBadge);
@@ -404,11 +459,10 @@ window.ExclusiveAuth?.mountProfileLinks(profileLinks);
 window.addEventListener(window.ExclusiveAuth?.AUTH_EVENT || "exclusive:authchange", () => {
   window.ExclusiveAuth?.mountProfileLinks(profileLinks);
 });
-window.addEventListener(window.ExclusiveCatalog?.CATALOG_EVENT || "exclusive:catalogchange", () => {
-  if (catalogRefreshHandled) {
-    return;
-  }
-
-  catalogRefreshHandled = true;
-  window.location.reload();
+catalogApi?.ready?.().then(mountCatalogPage);
+window.addEventListener(window.ExclusiveCatalog?.CATALOG_EVENT || "exclusive:catalogchange", mountCatalogPage);
+window.addEventListener(favoritesApi?.FAVORITES_EVENT || "exclusive:favoriteschange", () => {
+  document.querySelectorAll("[data-favorite-product]").forEach((button) => {
+    syncFavoriteButton(button, favoritesApi?.hasFavorite?.(button.dataset.favoriteProduct) || false);
+  });
 });

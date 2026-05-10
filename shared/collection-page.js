@@ -2,6 +2,7 @@ const PRODUCT_PAGE_URL = "/product/";
 const ITEMS_PER_PAGE = 20;
 
 const catalogApi = window.ExclusiveCatalog;
+const favoritesApi = window.ExclusiveFavorites;
 const currentYearNode = document.getElementById("current-year");
 const headerCartBadge = document.getElementById("header-cart-badge");
 const profileLinks = document.querySelectorAll("[data-profile-link]");
@@ -51,6 +52,28 @@ const buildProductHref = (product) => {
   return `${PRODUCT_PAGE_URL}?id=${encodeURIComponent(product.id)}&return=${encodeURIComponent(returnUrl)}`;
 };
 
+const renderFavoriteIcon = () => `
+  <svg viewBox="0 0 24 25" aria-hidden="true">
+    <path d="M12 20.5L4.9 13.4C3.7 12.2 3 10.64 3 8.97C3 5.56 7.04 3.83 9.5 6.15L12 8.5L14.5 6.15C16.96 3.83 21 5.56 21 8.97C21 10.64 20.3 12.2 19.1 13.4L12 20.5"></path>
+  </svg>
+`;
+
+const renderFavoriteButton = (product) => {
+  const isFavorite = favoritesApi?.hasFavorite?.(product.id) || false;
+
+  return `
+    <button
+      class="catalog-card__favorite ${isFavorite ? "is-active" : ""}"
+      type="button"
+      data-favorite-product="${escapeHtml(product.id)}"
+      aria-label="${isFavorite ? "Убрать из избранного" : "Добавить в избранное"}"
+      aria-pressed="${String(isFavorite)}"
+    >
+      ${renderFavoriteIcon()}
+    </button>
+  `;
+};
+
 const getPaginationItems = (totalPages, currentPage) => {
   if (totalPages <= 7) {
     return Array.from({ length: totalPages }, (_, index) => index + 1);
@@ -91,7 +114,11 @@ const getProducts = () => {
   return Array.isArray(collections[collectionKey]) ? collections[collectionKey] : [];
 };
 
-const categories = catalogApi?.getCategories?.() || [];
+let categories = catalogApi?.getCategories?.() || [];
+
+const refreshCatalogContext = () => {
+  categories = catalogApi?.getCategories?.() || [];
+};
 
 const getGroupedSubcategories = (categoryKey) => {
   const products = catalogApi?.getProducts?.({ categoryKey }) || [];
@@ -188,6 +215,7 @@ const renderCatalogTrees = () => {
 
 const renderProductCard = (product) => `
   <article class="catalog-card">
+    ${renderFavoriteButton(product)}
     <a class="catalog-card__media" href="${buildProductHref(product)}">
       <img src="${product.image}" alt="${escapeHtml(product.title)}" loading="lazy">
     </a>
@@ -260,6 +288,28 @@ const renderProducts = () => {
   productsNode.innerHTML = visibleProducts.map(renderProductCard).join("");
   emptyNode.style.display = products.length === 0 ? "block" : "none";
   renderPagination(products.length);
+};
+
+const syncFavoriteButton = (button, isFavorite) => {
+  button.classList.toggle("is-active", isFavorite);
+  button.setAttribute("aria-pressed", String(isFavorite));
+  button.setAttribute("aria-label", isFavorite ? "Убрать из избранного" : "Добавить в избранное");
+};
+
+const initFavoriteButtons = () => {
+  productsNode?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-favorite-product]");
+
+    if (!button) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const isFavorite = favoritesApi?.toggleFavorite?.(button.dataset.favoriteProduct) ?? false;
+    syncFavoriteButton(button, isFavorite);
+  });
 };
 
 const renderPageMeta = () => {
@@ -336,15 +386,17 @@ const mountFooter = () => {
   if (currentYearNode) {
     currentYearNode.textContent = String(new Date().getFullYear());
   }
-
-  document.querySelectorAll("[data-telegram-link]").forEach((link) => {
-    link.setAttribute("href", window.ExclusiveSiteConfig?.getTelegramBotUrl?.() || "https://t.me/");
-  });
 };
 
-renderPageMeta();
-renderCatalogTrees();
-renderProducts();
+const mountCollectionPage = () => {
+  refreshCatalogContext();
+  renderPageMeta();
+  renderCatalogTrees();
+  renderProducts();
+};
+
+mountCollectionPage();
+initFavoriteButtons();
 initDrawer();
 mountFooter();
 window.ExclusiveStore?.mountCartBadge(headerCartBadge);
@@ -352,6 +404,10 @@ window.ExclusiveAuth?.mountProfileLinks(profileLinks);
 window.addEventListener(window.ExclusiveAuth?.AUTH_EVENT || "exclusive:authchange", () => {
   window.ExclusiveAuth?.mountProfileLinks(profileLinks);
 });
-window.addEventListener(window.ExclusiveCatalog?.CATALOG_EVENT || "exclusive:catalogchange", () => {
-  window.location.reload();
+catalogApi?.ready?.().then(mountCollectionPage);
+window.addEventListener(window.ExclusiveCatalog?.CATALOG_EVENT || "exclusive:catalogchange", mountCollectionPage);
+window.addEventListener(favoritesApi?.FAVORITES_EVENT || "exclusive:favoriteschange", () => {
+  document.querySelectorAll("[data-favorite-product]").forEach((button) => {
+    syncFavoriteButton(button, favoritesApi?.hasFavorite?.(button.dataset.favoriteProduct) || false);
+  });
 });

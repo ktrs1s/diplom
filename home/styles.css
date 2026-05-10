@@ -1,6 +1,6 @@
 :root {
   --header-height: 48px;
-  --page-padding: 75px;
+  --page-padding: 72px;
   --container-width: 1440px;
   --text-color: #0d0d0d;
   --surface-color: #ffffff;
@@ -71,10 +71,15 @@ button {
   padding-inline: var(--page-padding);
 }
 
-.site-header .container-fluid,
 .site-footer .container-fluid {
   width: min(100%, var(--container-width));
   margin: 0 auto;
+}
+
+.site-header .container-fluid {
+  width: 100%;
+  max-width: none;
+  margin: 0;
 }
 
 .site-header {
@@ -1045,10 +1050,6 @@ body.menu-open .menu-toggle span:nth-child(3) {
     display: none;
   }
 
-  .section-carousel__controls {
-    display: none;
-  }
-
   .section-carousel__item {
     flex-basis: calc((100% - (2 * var(--carousel-gap))) / 3);
   }
@@ -1059,6 +1060,12 @@ body.menu-open .menu-toggle span:nth-child(3) {
 
   .site-footer__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 880px) {
+  .section-carousel__controls {
+    display: none;
   }
 }
 

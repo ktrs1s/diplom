@@ -36,7 +36,7 @@ const catalogHomeHref = "/catalog/";
 const productPageHref = "/product/";
 const catalogApi = window.ExclusiveCatalog;
 
-const heroSlides = [
+const fallbackHeroSlides = [
   {
     href: catalogHomeHref,
     desktopImage: createHeroPlaceholder("БАННЕР 01", ["#d9d0c9", "#8f847d"]),
@@ -59,6 +59,7 @@ const heroSlides = [
     title: "Интернет-магазин женской одежды EXCLUSIVE",
   },
 ];
+let heroSlides = [];
 
 const heroTrack = document.getElementById("hero-track");
 const heroDots = document.getElementById("hero-dots");
@@ -77,7 +78,6 @@ const mobileMenu = document.getElementById("mobile-menu");
 const mobileMenuClose = document.getElementById("mobile-menu-close");
 const mobileMenuBackdrop = document.getElementById("mobile-menu-backdrop");
 const siteHeader = document.getElementById("site-header");
-let catalogRefreshHandled = false;
 
 const escapeHtml = (value) =>
   String(value)
@@ -107,11 +107,17 @@ const resolveHomeData = () => {
   return catalogApi.getHomeCollections();
 };
 
+const resolveHeroSlides = () => {
+  const slides = catalogApi?.getHeroSlides?.() || catalogApi?.getBanners?.() || [];
+  return Array.isArray(slides) && slides.length ? slides : fallbackHeroSlides;
+};
+
 const renderHeroSlides = () => {
   if (!heroTrack || !heroDots) {
     return;
   }
 
+  heroSlides = resolveHeroSlides();
   heroTrack.innerHTML = heroSlides
     .map((slide, index) => {
       const titleMarkup = slide.title ? `<h1 class="hero-slide__title">${escapeHtml(slide.title)}</h1>` : "";
@@ -201,6 +207,7 @@ const mountContent = () => {
   const homeData = resolveHomeData();
 
   renderHeroSlides();
+  window.dispatchEvent(new CustomEvent("exclusive:heroslideschange"));
 
   if (categoriesTrack) {
     categoriesTrack.innerHTML = homeData.categories.map(renderCategoryCard).join("");
@@ -232,10 +239,6 @@ const mountContent = () => {
   if (currentYearNode) {
     currentYearNode.textContent = String(new Date().getFullYear());
   }
-
-  document.querySelectorAll("[data-telegram-link]").forEach((link) => {
-    link.setAttribute("href", window.ExclusiveSiteConfig?.getTelegramBotUrl?.() || "https://t.me/");
-  });
 };
 
 const initHeroSlider = () => {
@@ -247,15 +250,19 @@ const initHeroSlider = () => {
     return;
   }
 
-  const dots = Array.from(heroDots.querySelectorAll("[data-hero-dot]"));
+  const getDots = () => Array.from(heroDots.querySelectorAll("[data-hero-dot]"));
   let currentIndex = 0;
   let autoTimer = null;
 
   const updateHero = (index) => {
+    if (!heroSlides.length) {
+      return;
+    }
+
     currentIndex = (index + heroSlides.length) % heroSlides.length;
     heroTrack.style.transform = `translateX(-${currentIndex * 100}%)`;
 
-    dots.forEach((dot, dotIndex) => {
+    getDots().forEach((dot, dotIndex) => {
       dot.classList.toggle("is-active", dotIndex === currentIndex);
     });
   };
@@ -275,15 +282,23 @@ const initHeroSlider = () => {
     startAuto();
   });
 
-  dots.forEach((dot) => {
-    dot.addEventListener("click", () => {
-      updateHero(Number(dot.dataset.heroDot));
-      startAuto();
-    });
+  heroDots.addEventListener("click", (event) => {
+    const dot = event.target.closest("[data-hero-dot]");
+
+    if (!dot) {
+      return;
+    }
+
+    updateHero(Number(dot.dataset.heroDot));
+    startAuto();
   });
 
   slider.addEventListener("mouseenter", () => window.clearInterval(autoTimer));
   slider.addEventListener("mouseleave", startAuto);
+  window.addEventListener("exclusive:heroslideschange", () => {
+    updateHero(0);
+    startAuto();
+  });
 
   updateHero(0);
   startAuto();
@@ -497,11 +512,11 @@ window.ExclusiveAuth?.mountProfileLinks(profileLinks);
 window.addEventListener(window.ExclusiveAuth?.AUTH_EVENT || "exclusive:authchange", () => {
   window.ExclusiveAuth?.mountProfileLinks(profileLinks);
 });
+catalogApi?.ready?.().then(() => {
+  mountContent();
+  carouselControllers.forEach((controller) => controller.update());
+});
 window.addEventListener(window.ExclusiveCatalog?.CATALOG_EVENT || "exclusive:catalogchange", () => {
-  if (catalogRefreshHandled) {
-    return;
-  }
-
-  catalogRefreshHandled = true;
-  window.location.reload();
+  mountContent();
+  carouselControllers.forEach((controller) => controller.update());
 });
