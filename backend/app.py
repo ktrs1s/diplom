@@ -1,5 +1,11 @@
+import base64
+import binascii
+import hashlib
+import io
 import json
 import os
+import re
+import secrets
 import threading
 import time
 import traceback
@@ -7,9 +13,11 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 try:
     from database import SiteDatabase
@@ -21,15 +29,18 @@ APP_DIR = Path(__file__).resolve().parent
 DATA_DIR = APP_DIR / "data"
 LEGACY_STORE_FILE = DATA_DIR / "store.json"
 LEGACY_SQLITE_FILE = DATA_DIR / "exclusive.sqlite3"
+UPLOADS_DIR = Path(os.getenv("EXCLUSIVE_UPLOADS_DIR", str(APP_DIR.parent / "uploads"))).resolve()
+PRODUCT_UPLOADS_DIR = UPLOADS_DIR / "products"
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://exclusive:exclusive@127.0.0.1:5432/exclusive")
 API_HOST = os.getenv("EXCLUSIVE_API_HOST", "127.0.0.1")
 API_PORT = int(os.getenv("EXCLUSIVE_API_PORT", "9000"))
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
-BOT_USERNAME = os.getenv("TELEGRAM_BOT_USERNAME", "exclusive_order_assistant_bot").strip().replace("@", "")
+BOT_USERNAME = os.getenv("TELEGRAM_BOT_USERNAME", "exclusive_order_bot").strip().replace("@", "")
 MANAGER_CHAT_IDS = [value.strip() for value in os.getenv("TELEGRAM_MANAGER_CHAT_IDS", "").split(",") if value.strip()]
 MANAGER_USERNAMES = [value.strip().replace("@", "") for value in os.getenv("TELEGRAM_MANAGER_USERNAMES", "").split(",") if value.strip()]
 DEMO_PHONE = os.getenv("EXCLUSIVE_DEMO_PHONE", "+79999999999").strip()
 ADMIN_PHONES_RAW = os.getenv("EXCLUSIVE_ADMIN_PHONES", "+79953980243")
+PASSWORD_HASH_ITERATIONS = 180_000
 
 
 def utc_now():
@@ -62,12 +73,104 @@ def sanitize_text(value, fallback=""):
     return trimmed or fallback
 
 
+def normalize_email(value):
+    email = sanitize_text(value).lower()
+    if not email:
+        return ""
+
+    if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+        return ""
+
+    return email
+
+
+def normalize_telegram_username(value):
+    username = sanitize_text(value).replace("@", "").strip()
+    username = "".join(symbol for symbol in username if symbol.isascii() and (symbol.isalnum() or symbol == "_"))
+    return username[:32]
+
+
+MOSCOW_TZ = timezone(timedelta(hours=3))
+
+
 def next_order_code(counter):
     date_prefix = datetime.utcnow().strftime("%Y%m%d")
     return f"EX-{date_prefix}-{counter:04d}"
 
 
 ADMIN_PHONES = [normalize_phone(value.strip()) for value in ADMIN_PHONES_RAW.split(",") if value.strip()]
+UPLOAD_DATA_URL_PATTERN = re.compile(r"^data:(image/(?:avif|gif|jpeg|jpg|png|svg\+xml|webp));base64,(.+)$", re.DOTALL)
+UPLOAD_EXTENSIONS = {
+    "image/avif": ".avif",
+    "image/gif": ".gif",
+    "image/jpeg": ".jpg",
+    "image/jpg": ".jpg",
+    "image/png": ".png",
+    "image/svg+xml": ".svg",
+    "image/webp": ".webp",
+}
+MAX_UPLOAD_BYTES = 12 * 1024 * 1024
+UPLOAD_IMAGE_MAX_SIZE = (1600, 2200)
+UPLOAD_IMAGE_QUALITY = 82
+def safe_upload_extension(name, mime_type):
+    suffix = Path(sanitize_text(name)).suffix.lower()
+
+    if suffix in {".avif", ".gif", ".jpg", ".jpeg", ".png", ".svg", ".webp"}:
+        return ".jpg" if suffix == ".jpeg" else suffix
+
+    return UPLOAD_EXTENSIONS.get(mime_type, ".webp")
+
+
+def optimize_upload_image(binary, mime_type):
+    if mime_type == "image/svg+xml":
+        return binary, ".svg"
+
+    try:
+        with Image.open(io.BytesIO(binary)) as source:
+            image = ImageOps.exif_transpose(source)
+            image.thumbnail(UPLOAD_IMAGE_MAX_SIZE, Image.Resampling.LANCZOS)
+
+            if image.mode not in {"RGB", "RGBA"}:
+                image = image.convert("RGBA" if "A" in image.getbands() else "RGB")
+
+            output = io.BytesIO()
+            image.save(output, format="WEBP", quality=UPLOAD_IMAGE_QUALITY, method=6)
+            return output.getvalue(), ".webp"
+    except UnidentifiedImageError as error:
+        raise ValueError("Не удалось обработать изображение.") from error
+
+
+def hash_password(password):
+    normalized_password = str(password or "")
+    salt = secrets.token_hex(16)
+    digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        normalized_password.encode("utf-8"),
+        salt.encode("utf-8"),
+        PASSWORD_HASH_ITERATIONS,
+    ).hex()
+    return f"pbkdf2_sha256${PASSWORD_HASH_ITERATIONS}${salt}${digest}"
+
+
+def verify_password(password, password_hash):
+    parts = str(password_hash or "").split("$")
+    if len(parts) != 4 or parts[0] != "pbkdf2_sha256":
+        return False
+
+    try:
+        iterations = int(parts[1])
+    except ValueError:
+        return False
+
+    salt = parts[2]
+    expected = parts[3]
+    actual = hashlib.pbkdf2_hmac(
+        "sha256",
+        str(password or "").encode("utf-8"),
+        salt.encode("utf-8"),
+        iterations,
+    ).hex()
+    return secrets.compare_digest(actual, expected)
 
 
 class Store:
@@ -90,7 +193,10 @@ class Store:
                     "id": "demo-user",
                     "firstName": "Demo",
                     "lastName": "Client",
+                    "city": "",
                     "phone": self.demo_phone,
+                    "email": "",
+                    "passwordHash": "",
                     "telegramChatId": "",
                     "createdAt": utc_now(),
                 }
@@ -149,7 +255,9 @@ class Store:
             "id": user["id"],
             "firstName": user["firstName"],
             "lastName": user["lastName"],
+            "city": user.get("city", ""),
             "phone": user["phone"],
+            "email": user.get("email", ""),
         }
 
     def get_user_by_phone(self, phone):
@@ -157,6 +265,29 @@ class Store:
         for user in self.data["users"]:
             if normalize_phone(user.get("phone")) == normalized_phone:
                 return user
+        return None
+
+    def get_user_by_email(self, email):
+        normalized_email = normalize_email(email)
+        if not normalized_email:
+            return None
+
+        for user in self.data["users"]:
+            if normalize_email(user.get("email")) == normalized_email:
+                return user
+        return None
+
+    def get_user_by_login(self, login):
+        normalized_phone = normalize_phone(login)
+        if normalized_phone:
+            user = self.get_user_by_phone(normalized_phone)
+            if user:
+                return user
+
+        normalized_email = normalize_email(login)
+        if normalized_email:
+            return self.get_user_by_email(normalized_email)
+
         return None
 
     def get_user_by_session(self, session_token):
@@ -192,32 +323,67 @@ class Store:
         self.save()
         return token
 
-    def login(self, phone):
-        with self.lock:
-            user = self.get_user_by_phone(phone)
+    def login(self, login, password):
+        normalized_login = sanitize_text(login)
+        normalized_password = str(password or "")
 
-            if not user:
-                raise ValueError("Аккаунт с таким номером не найден.")
+        if not normalized_login or not normalized_password:
+            raise ValueError("Введите номер телефона или адрес электронной почты и пароль.")
+
+        with self.lock:
+            user = self.get_user_by_login(normalized_login)
+
+            if not user or not verify_password(normalized_password, user.get("passwordHash")):
+                raise ValueError("Неверный логин или пароль.")
 
             token = self.create_session(user["id"])
             return {"user": self._public_user(user), "sessionToken": token}
 
-    def register(self, first_name, last_name, phone):
+    def register(self, first_name, last_name, city, phone, email, password):
         normalized_phone = normalize_phone(phone)
+        normalized_first_name = sanitize_text(first_name)
+        normalized_last_name = sanitize_text(last_name)
+        normalized_city = sanitize_text(city)
+        normalized_email = normalize_email(email)
+        normalized_password = str(password or "")
+
+        if not normalized_first_name or not normalized_last_name or not normalized_city or not normalized_phone or not normalized_email:
+            raise ValueError("Заполните имя, фамилию, город, телефон и почту.")
+
+        if len(normalized_password) < 6:
+            raise ValueError("Пароль должен быть не короче 6 символов.")
 
         with self.lock:
-            if self.get_user_by_phone(normalized_phone):
-                raise ValueError("Аккаунт с таким номером уже существует.")
+            existing_by_phone = self.get_user_by_phone(normalized_phone)
+            existing_by_email = self.get_user_by_email(normalized_email)
 
-            user = {
-                "id": f"user-{uuid.uuid4().hex[:12]}",
-                "firstName": sanitize_text(first_name),
-                "lastName": sanitize_text(last_name),
-                "phone": normalized_phone,
-                "telegramChatId": "",
-                "createdAt": utc_now(),
-            }
-            self.data["users"].insert(0, user)
+            if existing_by_email and (not existing_by_phone or existing_by_email.get("id") != existing_by_phone.get("id")):
+                raise ValueError("Аккаунт с такой почтой уже существует.")
+
+            if existing_by_phone:
+                if existing_by_phone.get("passwordHash"):
+                    raise ValueError("Аккаунт с таким номером уже существует.")
+
+                existing_by_phone["firstName"] = normalized_first_name
+                existing_by_phone["lastName"] = normalized_last_name
+                existing_by_phone["city"] = normalized_city
+                existing_by_phone["email"] = normalized_email
+                existing_by_phone["passwordHash"] = hash_password(normalized_password)
+                user = existing_by_phone
+            else:
+                user = {
+                    "id": f"user-{uuid.uuid4().hex[:12]}",
+                    "firstName": normalized_first_name,
+                    "lastName": normalized_last_name,
+                    "city": normalized_city,
+                    "phone": normalized_phone,
+                    "email": normalized_email,
+                    "passwordHash": hash_password(normalized_password),
+                    "telegramChatId": "",
+                    "createdAt": utc_now(),
+                }
+                self.data["users"].insert(0, user)
+
             token = self.create_session(user["id"])
             self.save()
             return {"user": self._public_user(user), "sessionToken": token}
@@ -250,7 +416,10 @@ class Store:
                 "id": f"user-{uuid.uuid4().hex[:12]}",
                 "firstName": first_name,
                 "lastName": last_name,
+                "city": sanitize_text(customer_payload.get("city")),
                 "phone": phone,
+                "email": normalize_email(customer_payload.get("email")),
+                "passwordHash": "",
                 "telegramChatId": "",
                 "createdAt": utc_now(),
             }
@@ -294,9 +463,10 @@ class Store:
                 "total": int(payload.get("total") or 0),
                 "sourceUrl": sanitize_text(payload.get("sourceUrl")),
                 "deliveryMode": "",
-                "city": "",
+                "city": sanitize_text(payload.get("city")),
                 "address": "",
                 "comment": "",
+                "telegramUsername": normalize_telegram_username(payload.get("telegramUsername")),
                 "telegramChatId": "",
                 "statusHistory": [{"status": "draft", "at": utc_now(), "source": "site"}],
             }
@@ -360,10 +530,12 @@ class Store:
                 "orders": self.list_orders_for_phone(user.get("phone")),
             }
 
-    def update_account_profile(self, session_token, first_name, last_name, phone):
+    def update_account_profile(self, session_token, first_name, last_name, city, phone, email):
         normalized_phone = normalize_phone(phone)
         normalized_first_name = sanitize_text(first_name)
         normalized_last_name = sanitize_text(last_name)
+        normalized_city = sanitize_text(city)
+        normalized_email = normalize_email(email)
 
         with self.lock:
             user = self.get_user_by_session(session_token)
@@ -371,8 +543,8 @@ class Store:
             if not user:
                 raise ValueError("Сессия не найдена.")
 
-            if not normalized_first_name or not normalized_last_name or not normalized_phone:
-                raise ValueError("Заполните имя, фамилию и телефон.")
+            if not normalized_first_name or not normalized_last_name or not normalized_city or not normalized_phone or not normalized_email:
+                raise ValueError("Заполните имя, фамилию, город, телефон и почту.")
 
             duplicate = next(
                 (
@@ -386,10 +558,24 @@ class Store:
             if duplicate:
                 raise ValueError("Аккаунт с таким номером уже существует.")
 
+            duplicate_email = next(
+                (
+                    entry
+                    for entry in self.data["users"]
+                    if entry.get("id") != user.get("id") and normalize_email(entry.get("email")) == normalized_email
+                ),
+                None,
+            )
+
+            if duplicate_email:
+                raise ValueError("Аккаунт с такой почтой уже существует.")
+
             previous_phone = normalize_phone(user.get("phone"))
             user["firstName"] = normalized_first_name
             user["lastName"] = normalized_last_name
+            user["city"] = normalized_city
             user["phone"] = normalized_phone
+            user["email"] = normalized_email
 
             for order in self.data["orders"]:
                 if normalize_phone(order.get("customer", {}).get("phone")) != previous_phone:
@@ -397,7 +583,9 @@ class Store:
 
                 order["customer"]["firstName"] = normalized_first_name
                 order["customer"]["lastName"] = normalized_last_name
+                order["customer"]["city"] = normalized_city
                 order["customer"]["phone"] = normalized_phone
+                order["customer"]["email"] = normalized_email
 
             self.save()
             return {
@@ -465,15 +653,6 @@ class Store:
 
 
 class TelegramBot:
-    STATUS_LABELS = {
-        "draft": "Черновик",
-        "pending_manager": "Ждет менеджера",
-        "accepted": "Подтвержден",
-        "shipping": "Передан в доставку",
-        "completed": "Завершен",
-        "cancelled": "Отменен",
-    }
-
     def __init__(self, token, username, manager_chat_ids, manager_usernames, store):
         self.token = token
         self.username = username
@@ -522,22 +701,12 @@ class TelegramBot:
             traceback.print_exc()
             return {}
 
-    def send_message(self, chat_id, text, reply_markup=None):
+    def send_message(self, chat_id, text):
         payload = {
             "chat_id": chat_id,
             "text": text,
         }
-
-        if reply_markup:
-            payload["reply_markup"] = reply_markup
-
-        self.api_call("sendMessage", payload)
-
-    def answer_callback(self, callback_id, text=""):
-        payload = {"callback_query_id": callback_id}
-        if text:
-            payload["text"] = text
-        self.api_call("answerCallbackQuery", payload)
+        return self.api_call("sendMessage", payload)
 
     def is_manager_user(self, telegram_user):
         user_id = str(telegram_user.get("id") or "")
@@ -561,67 +730,59 @@ class TelegramBot:
         if username and username in self.manager_usernames:
             self.store.remember_manager_chat(username, chat_id)
 
+    def format_order_date(self, order):
+        created_at = sanitize_text(order.get("createdAt"))
+
+        try:
+            normalized = created_at.replace("Z", "+00:00")
+            date_value = datetime.fromisoformat(normalized)
+
+            if date_value.tzinfo is None:
+                date_value = date_value.replace(tzinfo=timezone.utc)
+
+            return date_value.astimezone(MOSCOW_TZ).strftime("%d.%m.%Y, %H:%M")
+        except ValueError:
+            return datetime.now(MOSCOW_TZ).strftime("%d.%m.%Y, %H:%M")
+
     def build_order_text(self, order):
-        items_line = ", ".join(f"{item['title']} × {item['quantity']}" for item in order.get("items", [])[:3])
         customer = order.get("customer", {})
-        parts = [
-            f"Заказ {order['id']}",
-            f"{items_line}",
-            f"Итого: {order['total']} ₽",
-            f"{customer.get('firstName', '')} {customer.get('lastName', '')}".strip(),
-            customer.get("phone", ""),
-            f"Статус: {self.STATUS_LABELS.get(order.get('status'), 'В работе')}",
+        full_name = " ".join(
+            part
+            for part in [
+                sanitize_text(customer.get("lastName")),
+                sanitize_text(customer.get("firstName")),
+            ]
+            if part
+        )
+        telegram_username = sanitize_text(order.get("telegramUsername"))
+        item_lines = []
+        header_lines = [
+            "✨Поступил новый заказ!",
+            f"ФИО: {full_name or 'Не указано'}",
+            f"Телефон: {sanitize_text(customer.get('phone'), 'Не указан')}",
+            f"Город: {sanitize_text(order.get('city'), 'Не указан')}",
         ]
 
-        if order.get("deliveryMode") == "courier":
-            parts.append(f"Доставка: курьер, {order.get('city', '')}, {order.get('address', '')}".strip(", "))
-        elif order.get("deliveryMode") == "pickup":
-            parts.append(f"Самовывоз: {order.get('city', '')}".strip())
+        if telegram_username:
+            header_lines.append(f"Telegram: @{telegram_username}")
 
-        if order.get("comment"):
-            parts.append(f"Комментарий: {order['comment']}")
+        for item in order.get("items", []):
+            title = sanitize_text(item.get("title"), "Товар EXCLUSIVE")
+            size = sanitize_text(item.get("size"), "размер не указан")
+            article = sanitize_text(item.get("article"), "артикул не указан")
+            quantity = int(item.get("quantity") or 1)
+            quantity_label = f" x {quantity}" if quantity > 1 else ""
+            item_lines.append(f"• {title}, {size}, ({article}){quantity_label}")
 
-        return "\n".join(part for part in parts if part)
-
-    def build_customer_keyboard(self, order):
-        if order.get("status") in {"accepted", "shipping", "completed", "cancelled"}:
-            return {
-                "inline_keyboard": [
-                    [
-                        {
-                            "text": "Показать статус",
-                            "callback_data": f"status|{order['id']}",
-                        }
-                    ]
-                ]
-            }
-
-        return {
-            "inline_keyboard": [
-                [
-                    {"text": "Курьер", "callback_data": f"delivery|{order['id']}|courier"},
-                    {"text": "Самовывоз", "callback_data": f"delivery|{order['id']}|pickup"},
-                ],
-                [
-                    {"text": "Комментарий", "callback_data": f"comment|{order['id']}"},
-                    {"text": "Подтвердить", "callback_data": f"confirm|{order['id']}"},
-                ],
+        return "\n".join(
+            [
+                *header_lines,
+                "",
+                *(item_lines or ["• Товары не указаны"]),
+                "",
+                f"Дата заказа: {self.format_order_date(order)}",
             ]
-        }
-
-    def build_manager_keyboard(self, order):
-        return {
-            "inline_keyboard": [
-                [
-                    {"text": "Подтвердить", "callback_data": f"admin|{order['id']}|accepted"},
-                    {"text": "В доставку", "callback_data": f"admin|{order['id']}|shipping"},
-                ],
-                [
-                    {"text": "Завершен", "callback_data": f"admin|{order['id']}|completed"},
-                    {"text": "Отменить", "callback_data": f"admin|{order['id']}|cancelled"},
-                ],
-            ]
-        }
+        )
 
     def notify_managers(self, order):
         destination_ids = {
@@ -634,211 +795,31 @@ class TelegramBot:
         }
 
         if not destination_ids:
-            return
+            print("Telegram manager chat is not configured. Order notification skipped.", flush=True)
+            return False
 
-        text = f"Новый заказ\n{self.build_order_text(order)}"
+        text = self.build_order_text(order)
+        sent = False
 
         for chat_id in destination_ids:
-            self.send_message(chat_id, text, self.build_manager_keyboard(order))
+            response = self.send_message(chat_id, text)
+            sent = bool(isinstance(response, dict) and response.get("ok")) or sent
 
-    def prompt_for_order(self, chat_id, order):
-        text = f"{self.build_order_text(order)}\n\nВыберите доставку, при желании добавьте комментарий и подтвердите заказ."
-        self.send_message(chat_id, text, self.build_customer_keyboard(order))
+        return sent
 
-    def handle_start(self, chat_id, message):
-        text = sanitize_text(message.get("text"))
-        payload = text.split(maxsplit=1)[1] if " " in text else ""
+    def handle_text(self, message):
+        chat_id = message.get("chat", {}).get("id")
         telegram_user = message.get("from", {})
 
         self.remember_manager_from_user(chat_id, telegram_user)
-
-        if payload.startswith("order_"):
-            order_id = payload.replace("order_", "", 1)
-            order = self.store.get_order(order_id)
-
-            if not order:
-                self.send_message(chat_id, "Заказ не найден. Проверьте ссылку и попробуйте еще раз.")
-                return
-
-            self.store.attach_chat(order_id, chat_id, message.get("from", {}))
-            self.prompt_for_order(chat_id, order)
-            return
 
         if self.is_manager_user(telegram_user):
             self.send_message(chat_id, "Менеджерский аккаунт подключен. Новые заказы будут приходить сюда.")
             return
 
-        orders = self.store.list_orders_for_chat(chat_id)
-
-        if orders:
-            latest = orders[0]
-            self.send_message(chat_id, self.build_order_text(latest), self.build_customer_keyboard(latest))
-            return
-
-        self.send_message(chat_id, "Я помогу подтвердить заказ EXCLUSIVE. Откройте меня из корзины сайта и я продолжу оформление.")
-
-    def handle_callback(self, callback):
-        callback_id = callback.get("id")
-        data = sanitize_text(callback.get("data"))
-        chat_id = callback.get("message", {}).get("chat", {}).get("id")
-        telegram_user = callback.get("from", {})
-        self.remember_manager_from_user(chat_id, telegram_user)
-        parts = data.split("|")
-
-        if not parts:
-            self.answer_callback(callback_id)
-            return
-
-        action = parts[0]
-
-        if action == "status" and len(parts) >= 2:
-            order = self.store.get_order(parts[1])
-            if order:
-                self.send_message(chat_id, self.build_order_text(order))
-            self.answer_callback(callback_id)
-            return
-
-        if action == "delivery" and len(parts) >= 3:
-            order_id = parts[1]
-            delivery_mode = parts[2]
-            self.store.update_order(order_id, deliveryMode=delivery_mode, city="", address="")
-
-            if delivery_mode == "courier":
-                self.store.set_conversation(chat_id, {"orderId": order_id, "step": "address"})
-                self.send_message(chat_id, "Напишите город и адрес одним сообщением.")
-            else:
-                self.store.set_conversation(chat_id, {"orderId": order_id, "step": "pickup_city"})
-                self.send_message(chat_id, "Напишите город для самовывоза.")
-
-            self.answer_callback(callback_id, "Доставка выбрана")
-            return
-
-        if action == "comment" and len(parts) >= 2:
-            order_id = parts[1]
-            self.store.set_conversation(chat_id, {"orderId": order_id, "step": "comment"})
-            self.send_message(chat_id, "Напишите короткий комментарий к заказу.")
-            self.answer_callback(callback_id, "Жду комментарий")
-            return
-
-        if action == "confirm" and len(parts) >= 2:
-            order_id = parts[1]
-            order = self.store.get_order(order_id)
-
-            if not order:
-                self.answer_callback(callback_id, "Заказ не найден")
-                return
-
-            if order.get("deliveryMode") == "courier" and not order.get("address"):
-                self.store.set_conversation(chat_id, {"orderId": order_id, "step": "address"})
-                self.send_message(chat_id, "Чтобы подтвердить заказ, напишите город и адрес.")
-                self.answer_callback(callback_id, "Нужен адрес")
-                return
-
-            if order.get("deliveryMode") == "pickup" and not order.get("city"):
-                self.store.set_conversation(chat_id, {"orderId": order_id, "step": "pickup_city"})
-                self.send_message(chat_id, "Чтобы подтвердить заказ, напишите город для самовывоза.")
-                self.answer_callback(callback_id, "Нужен город")
-                return
-
-            updated = self.store.update_order(order_id, status="pending_manager")
-            self.store.clear_conversation(chat_id)
-            self.send_message(chat_id, "Заказ принят. Менеджер подтвердит его здесь же в Telegram.")
-            self.notify_managers(updated)
-            self.answer_callback(callback_id, "Заказ отправлен менеджеру")
-            return
-
-        if action == "admin" and len(parts) >= 3:
-            if not self.is_manager_user(telegram_user):
-                self.answer_callback(callback_id, "Нет доступа")
-                return
-
-            order_id = parts[1]
-            next_status = parts[2]
-            order = self.store.update_order(order_id, status=next_status)
-
-            if order and order.get("telegramChatId"):
-                self.send_message(order["telegramChatId"], f"Статус обновлен: {self.STATUS_LABELS.get(next_status, next_status)}.")
-
-            self.answer_callback(callback_id, "Статус обновлен")
-            return
-
-        self.answer_callback(callback_id)
-
-    def handle_text(self, message):
-        chat_id = message.get("chat", {}).get("id")
-        text = sanitize_text(message.get("text"))
-        telegram_user = message.get("from", {})
-
-        self.remember_manager_from_user(chat_id, telegram_user)
-
-        if not text:
-            return
-
-        if text.startswith("/start"):
-            self.handle_start(chat_id, message)
-            return
-
-        if text == "/orders":
-            if self.is_manager_user(telegram_user):
-                pending_order = next(
-                    (
-                        order
-                        for order in self.store.data.get("orders", [])
-                        if order.get("status") == "pending_manager"
-                    ),
-                    None,
-                )
-
-                if not pending_order:
-                    self.send_message(chat_id, "Новых заказов для подтверждения пока нет.")
-                    return
-
-                self.send_message(chat_id, self.build_order_text(pending_order), self.build_manager_keyboard(pending_order))
-                return
-
-            orders = self.store.list_orders_for_chat(chat_id)
-
-            if not orders:
-                self.send_message(chat_id, "Активных заказов пока нет.")
-                return
-
-            self.send_message(chat_id, self.build_order_text(orders[0]), self.build_customer_keyboard(orders[0]))
-            return
-
-        conversation = self.store.get_conversation(chat_id)
-
-        if not conversation:
-            self.send_message(chat_id, "Откройте меня из корзины сайта, и я продолжу оформление заказа.")
-            return
-
-        order_id = conversation.get("orderId")
-        step = conversation.get("step")
-
-        if step == "address":
-            order = self.store.update_order(order_id, address=text, city=text.split(",")[0].strip())
-            self.store.clear_conversation(chat_id)
-            self.send_message(chat_id, "Адрес сохранен.")
-            self.prompt_for_order(chat_id, order)
-            return
-
-        if step == "pickup_city":
-            order = self.store.update_order(order_id, city=text)
-            self.store.clear_conversation(chat_id)
-            self.send_message(chat_id, "Город сохранен.")
-            self.prompt_for_order(chat_id, order)
-            return
-
-        if step == "comment":
-            order = self.store.update_order(order_id, comment=text)
-            self.store.clear_conversation(chat_id)
-            self.send_message(chat_id, "Комментарий добавлен.")
-            self.prompt_for_order(chat_id, order)
+        self.send_message(chat_id, "Заказы оформляются на сайте EXCLUSIVE. Менеджер получит уведомление после оформления.")
 
     def handle_update(self, update):
-        if "callback_query" in update:
-            self.handle_callback(update["callback_query"])
-            return
-
         message = update.get("message")
 
         if message:
@@ -874,7 +855,7 @@ class TelegramBot:
                     {
                         "offset": self.offset,
                         "timeout": 25,
-                        "allowed_updates": ["message", "callback_query"],
+                        "allowed_updates": ["message"],
                     },
                 )
 
@@ -899,7 +880,7 @@ class TelegramBot:
                         {
                             "offset": self.offset,
                             "timeout": 0,
-                            "allowed_updates": ["message", "callback_query"],
+                            "allowed_updates": ["message"],
                         },
                     )
 
@@ -926,6 +907,13 @@ class ApiHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _client_ip(self):
+        forwarded = self.headers.get("X-Forwarded-For", "")
+        if forwarded:
+            return forwarded.split(",", 1)[0].strip()
+
+        return self.client_address[0] if self.client_address else ""
+
     def do_OPTIONS(self):
         self._send_json(200, {"success": True})
 
@@ -937,6 +925,7 @@ class ApiHandler(BaseHTTPRequestHandler):
                     "success": True,
                     "botReady": bool(self.bot and self.bot.is_ready()),
                     "botUsername": BOT_USERNAME,
+                    "authMode": "password",
                 },
             )
             return
@@ -949,6 +938,7 @@ class ApiHandler(BaseHTTPRequestHandler):
                     "demoPhone": DEMO_PHONE,
                     "botReady": bool(self.bot and self.bot.is_ready()),
                     "botUsername": BOT_USERNAME,
+                    "authMode": "password",
                 },
             )
             return
@@ -982,10 +972,18 @@ class ApiHandler(BaseHTTPRequestHandler):
 
         if self.path == "/api/auth/login":
             try:
-                result = self.store.login(payload.get("phone"))
+                result = self.store.login(payload.get("login"), payload.get("password"))
                 self._send_json(200, {"success": True, **result})
             except ValueError as error:
                 self._send_json(400, {"success": False, "error": str(error)})
+            return
+
+        if self.path == "/api/auth/request-code":
+            self._send_json(410, {"success": False, "error": "Коды подтверждения отключены. Используйте вход по паролю."})
+            return
+
+        if self.path == "/api/auth/verify-code":
+            self._send_json(410, {"success": False, "error": "Коды подтверждения отключены. Используйте вход по паролю."})
             return
 
         if self.path == "/api/auth/register":
@@ -993,7 +991,10 @@ class ApiHandler(BaseHTTPRequestHandler):
                 result = self.store.register(
                     payload.get("firstName"),
                     payload.get("lastName"),
+                    payload.get("city"),
                     payload.get("phone"),
+                    payload.get("email"),
+                    payload.get("password"),
                 )
                 self._send_json(200, {"success": True, **result})
             except ValueError as error:
@@ -1003,14 +1004,14 @@ class ApiHandler(BaseHTTPRequestHandler):
         if self.path == "/api/orders":
             try:
                 order = self.store.create_order(payload.get("sessionToken"), payload)
-                bot_url = f"https://t.me/{BOT_USERNAME}?start=order_{order['id']}" if BOT_USERNAME else "https://t.me/"
+                manager_notified = bool(self.bot and self.bot.is_ready() and self.bot.notify_managers(order))
                 self._send_json(
                     200,
                     {
                         "success": True,
                         "order": order,
-                        "botUrl": bot_url,
                         "botReady": bool(self.bot and self.bot.is_ready()),
+                        "managerNotified": manager_notified,
                     },
                 )
             except ValueError as error:
@@ -1031,11 +1032,60 @@ class ApiHandler(BaseHTTPRequestHandler):
                     payload.get("sessionToken"),
                     payload.get("firstName"),
                     payload.get("lastName"),
+                    payload.get("city"),
                     payload.get("phone"),
+                    payload.get("email"),
                 )
                 self._send_json(200, {"success": True, **result})
             except ValueError as error:
                 self._send_json(400, {"success": False, "error": str(error)})
+            return
+
+        if self.path == "/api/uploads":
+            if not self.store.is_admin_session(payload.get("sessionToken")):
+                self._send_json(403, {"success": False, "error": "Доступ к загрузке разрешен только владельцу."})
+                return
+
+            files = payload.get("files") or []
+
+            if not isinstance(files, list) or not files:
+                self._send_json(400, {"success": False, "error": "Файлы для загрузки не переданы."})
+                return
+
+            uploaded = []
+            PRODUCT_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
+            try:
+                for file_payload in files:
+                    if not isinstance(file_payload, dict):
+                        raise ValueError("Некорректный файл.")
+
+                    data_url = sanitize_text(file_payload.get("dataUrl"))
+                    match = UPLOAD_DATA_URL_PATTERN.match(data_url)
+
+                    if not match:
+                        raise ValueError("Поддерживаются только изображения.")
+
+                    mime_type = match.group(1)
+                    binary = base64.b64decode(match.group(2), validate=True)
+
+                    if not binary:
+                        raise ValueError("Пустой файл изображения.")
+
+                    if len(binary) > MAX_UPLOAD_BYTES:
+                        raise ValueError("Одно изображение не должно быть больше 12 МБ.")
+
+                    binary, extension = optimize_upload_image(binary, mime_type)
+                    filename = f"product-{int(time.time())}-{uuid.uuid4().hex[:12]}{extension}"
+                    target = PRODUCT_UPLOADS_DIR / filename
+                    target.write_bytes(binary)
+                    uploaded.append({"url": f"/uploads/products/{filename}"})
+
+            except (ValueError, binascii.Error) as error:
+                self._send_json(400, {"success": False, "error": str(error) or "Не удалось загрузить файл."})
+                return
+
+            self._send_json(200, {"success": True, "files": uploaded})
             return
 
         if self.path == "/api/catalog/bootstrap":
@@ -1051,6 +1101,7 @@ class ApiHandler(BaseHTTPRequestHandler):
             catalog = self.database.bootstrap_catalog(
                 payload.get("categories") or [],
                 payload.get("products") or [],
+                payload.get("banners") or [],
             )
             self._send_json(200, {"success": True, **catalog})
             return
@@ -1066,12 +1117,13 @@ class ApiHandler(BaseHTTPRequestHandler):
 
             categories = payload.get("categories") or []
             products = payload.get("products") or []
+            banners = payload.get("banners") or []
 
-            if not isinstance(categories, list) or not isinstance(products, list):
+            if not isinstance(categories, list) or not isinstance(products, list) or not isinstance(banners, list):
                 self._send_json(400, {"success": False, "error": "Некорректные данные каталога."})
                 return
 
-            catalog = self.database.replace_catalog(categories, products)
+            catalog = self.database.replace_catalog(categories, products, banners)
             self._send_json(200, {"success": True, **catalog})
             return
 

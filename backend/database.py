@@ -85,16 +85,59 @@ class SiteDatabase:
             )
             connection.execute(
                 """
+                CREATE TABLE IF NOT EXISTS banners (
+                  id TEXT PRIMARY KEY,
+                  title TEXT NOT NULL,
+                  text TEXT NOT NULL,
+                  button TEXT NOT NULL,
+                  href TEXT NOT NULL,
+                  desktop_image TEXT NOT NULL,
+                  mobile_image TEXT NOT NULL,
+                  created_at BIGINT NOT NULL,
+                  order_index INTEGER NOT NULL
+                )
+                """
+            )
+            connection.execute(
+                """
                 CREATE TABLE IF NOT EXISTS users (
                   id TEXT PRIMARY KEY,
                   first_name TEXT NOT NULL,
                   last_name TEXT NOT NULL,
+                  city TEXT NOT NULL DEFAULT '',
                   phone TEXT NOT NULL UNIQUE,
+                  email TEXT NOT NULL DEFAULT '',
+                  password_hash TEXT NOT NULL DEFAULT '',
                   telegram_chat_id TEXT NOT NULL DEFAULT '',
                   telegram_username TEXT NOT NULL DEFAULT '',
                   telegram_first_name TEXT NOT NULL DEFAULT '',
                   created_at TEXT NOT NULL
                 )
+                """
+            )
+            connection.execute(
+                """
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS city TEXT NOT NULL DEFAULT ''
+                """
+            )
+            connection.execute(
+                """
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS email TEXT NOT NULL DEFAULT ''
+                """
+            )
+            connection.execute(
+                """
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS password_hash TEXT NOT NULL DEFAULT ''
+                """
+            )
+            connection.execute(
+                """
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique
+                ON users (LOWER(email))
+                WHERE email <> ''
                 """
             )
             connection.execute(
@@ -197,6 +240,9 @@ class SiteDatabase:
     def has_catalog(self):
         return self._table_count("categories") > 0 and self._table_count("products") > 0
 
+    def has_banners(self):
+        return self._table_count("banners") > 0
+
     def _has_store_state(self):
         return any(
             self._table_count(table_name) > 0
@@ -210,7 +256,30 @@ class SiteDatabase:
         return {
             "categories": categories,
             "products": products,
+            "banners": [],
         }
+
+    def get_banners(self, connection):
+        return [
+            {
+                "id": row["id"],
+                "title": row["title"],
+                "text": row["text"],
+                "button": row["button"],
+                "href": row["href"],
+                "desktopImage": row["desktop_image"],
+                "mobileImage": row["mobile_image"],
+                "createdAt": int(row["created_at"] or 0),
+                "orderIndex": int(row["order_index"] or 0),
+            }
+            for row in connection.execute(
+                """
+                SELECT id, title, text, button, href, desktop_image, mobile_image, created_at, order_index
+                FROM banners
+                ORDER BY order_index ASC, created_at ASC, id ASC
+                """
+            ).fetchall()
+        ]
 
     def get_catalog(self):
         with self.lock, self._connect() as connection:
@@ -269,11 +338,43 @@ class SiteDatabase:
                 ).fetchall()
             ]
 
-            return self._serialize_catalog(categories, products)
+            catalog = self._serialize_catalog(categories, products)
+            catalog["banners"] = self.get_banners(connection)
+            return catalog
 
-    def replace_catalog(self, categories, products):
+    def _insert_banners(self, connection, banners):
+        connection.execute("DELETE FROM banners")
+
+        for banner in list(banners or []):
+            connection.execute(
+                """
+                INSERT INTO banners (
+                  id, title, text, button, href, desktop_image, mobile_image, created_at, order_index
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    banner.get("id", ""),
+                    banner.get("title", "") or "",
+                    banner.get("text", "") or "",
+                    banner.get("button", "") or "",
+                    banner.get("href", "") or "",
+                    banner.get("desktopImage", "") or "",
+                    banner.get("mobileImage", "") or "",
+                    int(banner.get("createdAt") or 0),
+                    int(banner.get("orderIndex") or 0),
+                ),
+            )
+
+    def replace_banners(self, banners):
+        with self.lock, self._connect() as connection:
+            self._insert_banners(connection, banners)
+
+        return self.get_catalog()
+
+    def replace_catalog(self, categories, products, banners=None):
         next_categories = list(categories or [])
         next_products = list(products or [])
+        next_banners = list(banners or [])
 
         with self.lock, self._connect() as connection:
             connection.execute("DELETE FROM products")
@@ -335,12 +436,17 @@ class SiteDatabase:
                     ),
                 )
 
+            self._insert_banners(connection, next_banners)
+
         return self.get_catalog()
 
-    def bootstrap_catalog(self, categories, products):
+    def bootstrap_catalog(self, categories, products, banners=None):
         with self.lock:
             if not self.has_catalog() and categories and products:
-                return self.replace_catalog(categories, products)
+                return self.replace_catalog(categories, products, banners)
+
+            if not self.has_banners() and banners:
+                return self.replace_banners(banners)
 
             return self.get_catalog()
 
@@ -348,12 +454,16 @@ class SiteDatabase:
         connection.execute(
             """
             INSERT INTO users (
-              id, first_name, last_name, phone, telegram_chat_id, telegram_username, telegram_first_name, created_at
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+              id, first_name, last_name, city, phone, email, password_hash,
+              telegram_chat_id, telegram_username, telegram_first_name, created_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (id) DO UPDATE SET
               first_name = EXCLUDED.first_name,
               last_name = EXCLUDED.last_name,
+              city = EXCLUDED.city,
               phone = EXCLUDED.phone,
+              email = EXCLUDED.email,
+              password_hash = EXCLUDED.password_hash,
               telegram_chat_id = EXCLUDED.telegram_chat_id,
               telegram_username = EXCLUDED.telegram_username,
               telegram_first_name = EXCLUDED.telegram_first_name,
@@ -363,7 +473,10 @@ class SiteDatabase:
                 user.get("id", ""),
                 user.get("firstName", ""),
                 user.get("lastName", ""),
+                user.get("city", "") or "",
                 user.get("phone", ""),
+                user.get("email", "") or "",
+                user.get("passwordHash", "") or "",
                 user.get("telegramChatId", "") or "",
                 user.get("telegramUsername", "") or "",
                 user.get("telegramFirstName", "") or "",
@@ -513,7 +626,10 @@ class SiteDatabase:
                     "id": row["id"],
                     "firstName": row["first_name"],
                     "lastName": row["last_name"],
+                    "city": row["city"],
                     "phone": row["phone"],
+                    "email": row["email"],
+                    "passwordHash": row["password_hash"],
                     "telegramChatId": row["telegram_chat_id"],
                     "telegramUsername": row["telegram_username"],
                     "telegramFirstName": row["telegram_first_name"],
@@ -521,7 +637,9 @@ class SiteDatabase:
                 }
                 for row in connection.execute(
                     """
-                    SELECT id, first_name, last_name, phone, telegram_chat_id, telegram_username, telegram_first_name, created_at
+                    SELECT
+                      id, first_name, last_name, city, phone, email, password_hash,
+                      telegram_chat_id, telegram_username, telegram_first_name, created_at
                     FROM users
                     ORDER BY created_at DESC, id DESC
                     """

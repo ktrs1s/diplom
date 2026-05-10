@@ -10,13 +10,17 @@ COPY index.html ./
 COPY account ./account
 COPY admin ./admin
 COPY auth ./auth
+COPY buyers ./buyers
 COPY cart ./cart
 COPY catalog ./catalog
+COPY favorites ./favorites
 COPY hit ./hit
 COPY home ./home
+COPY legal ./legal
 COPY new ./new
 COPY product ./product
 COPY product-alt ./product-alt
+COPY privacy.pdf ./privacy.pdf
 COPY ["фото", "./фото"]
 COPY shared ./shared
 COPY uploads ./uploads
