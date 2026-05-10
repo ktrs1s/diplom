@@ -2,6 +2,7 @@ const CART_PAGE_URL = "/cart/";
 const FALLBACK_RETURN_URL = "/catalog/";
 
 const catalogApi = window.ExclusiveCatalog;
+const favoritesApi = window.ExclusiveFavorites;
 const params = new URLSearchParams(window.location.search);
 const currentTemplateBase =
   window.location.pathname.includes("/product-alt/") || window.location.pathname.includes("/товар/")
@@ -40,20 +41,40 @@ const menuToggle = document.getElementById("menu-toggle");
 const mobileMenu = document.getElementById("mobile-menu");
 const mobileMenuClose = document.getElementById("mobile-menu-close");
 const mobileMenuBackdrop = document.getElementById("mobile-menu-backdrop");
-let catalogRefreshHandled = false;
 
-const fallbackProduct = catalogApi?.getProductById(params.get("id")) || catalogApi?.getProducts()?.[0] || null;
-const productData = fallbackProduct
-  ? {
-      ...fallbackProduct,
-      returnUrl: params.get("return") || `/catalog/?page=${encodeURIComponent(fallbackProduct.categoryKey)}`,
-    }
-  : null;
+const resolveProductData = () => {
+  const fallbackProduct = catalogApi?.getProductById(params.get("id")) || catalogApi?.getProducts()?.[0] || null;
+  return fallbackProduct
+    ? {
+        ...fallbackProduct,
+        returnUrl: params.get("return") || `/catalog/?page=${encodeURIComponent(fallbackProduct.categoryKey)}`,
+      }
+    : null;
+};
+
+let productData = resolveProductData();
 
 let activeImageIndex = 0;
 let activeSize = productData?.sizes?.[0] || "ONE SIZE";
 let activeColor = productData?.colors?.[0]?.name || "Базовый";
-let isFavorite = false;
+let isFavorite = favoritesApi?.hasFavorite?.(productData?.id) || false;
+
+const syncProductFromCatalog = () => {
+  const nextProduct = resolveProductData();
+
+  if (!nextProduct) {
+    productData = null;
+    return;
+  }
+
+  const hasActiveSize = nextProduct.sizes?.includes(activeSize);
+  const hasActiveColor = nextProduct.colors?.some((color) => color.name === activeColor);
+  productData = nextProduct;
+  activeImageIndex = Math.min(activeImageIndex, Math.max((productData.gallery?.length || 1) - 1, 0));
+  activeSize = hasActiveSize ? activeSize : productData.sizes?.[0] || "ONE SIZE";
+  activeColor = hasActiveColor ? activeColor : productData.colors?.[0]?.name || "Базовый";
+  isFavorite = favoritesApi?.hasFavorite?.(productData?.id) || false;
+};
 
 const escapeHtml = (value) =>
   String(value)
@@ -107,10 +128,17 @@ const setBadgeState = (node, isVisible) => {
 };
 
 const syncFavoriteState = () => {
+  const favoriteCount = favoritesApi?.count?.() || 0;
+
   favoriteButton?.classList.toggle("is-active", isFavorite);
   favoriteButton?.setAttribute("aria-pressed", String(isFavorite));
   headerFavoriteLink?.classList.toggle("is-active", isFavorite);
-  setBadgeState(headerFavoriteBadge, isFavorite);
+
+  if (headerFavoriteBadge) {
+    headerFavoriteBadge.textContent = String(favoriteCount);
+  }
+
+  setBadgeState(headerFavoriteBadge, favoriteCount > 0);
 };
 
 const syncCartState = () => {
@@ -322,6 +350,8 @@ const renderSizeTable = () => {
 };
 
 const mountProduct = () => {
+  syncProductFromCatalog();
+
   if (!productData) {
     return;
   }
@@ -373,10 +403,6 @@ const mountProduct = () => {
   if (headerCartLink) {
     headerCartLink.setAttribute("href", CART_PAGE_URL);
   }
-
-  document.querySelectorAll("[data-telegram-link]").forEach((link) => {
-    link.setAttribute("href", window.ExclusiveSiteConfig?.getTelegramBotUrl?.() || "https://t.me/");
-  });
 
   window.ExclusiveStore?.mountCartBadge(headerCartBadge);
   window.ExclusiveAuth?.mountProfileLinks(profileLinks);
@@ -473,7 +499,7 @@ const initProductInteractions = () => {
   });
 
   favoriteButton?.addEventListener("click", () => {
-    isFavorite = !isFavorite;
+    isFavorite = favoritesApi?.toggleFavorite?.(productData?.id) ?? !isFavorite;
     syncFavoriteState();
   });
 
@@ -530,14 +556,12 @@ mountProduct();
 initProductInteractions();
 initMobileMenu();
 window.ExclusiveStore && window.addEventListener(window.ExclusiveStore.CART_EVENT, syncCartState);
+window.addEventListener(favoritesApi?.FAVORITES_EVENT || "exclusive:favoriteschange", () => {
+  isFavorite = favoritesApi?.hasFavorite?.(productData?.id) || false;
+  syncFavoriteState();
+});
 window.addEventListener(window.ExclusiveAuth?.AUTH_EVENT || "exclusive:authchange", () => {
   window.ExclusiveAuth?.mountProfileLinks(profileLinks);
 });
-window.addEventListener(window.ExclusiveCatalog?.CATALOG_EVENT || "exclusive:catalogchange", () => {
-  if (catalogRefreshHandled) {
-    return;
-  }
-
-  catalogRefreshHandled = true;
-  window.location.reload();
-});
+catalogApi?.ready?.().then(mountProduct);
+window.addEventListener(window.ExclusiveCatalog?.CATALOG_EVENT || "exclusive:catalogchange", mountProduct);

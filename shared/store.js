@@ -30,6 +30,21 @@
       .map((part) => encodeURIComponent(part.toLowerCase()))
       .join("__");
 
+  const redirectToAuth = () => {
+    const returnUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    const authUrl = window.ExclusiveAuth?.getAuthUrl?.({ mode: "login", redirect: returnUrl }) || `/auth/?mode=login&redirect=${encodeURIComponent(returnUrl)}`;
+    window.location.href = authUrl;
+  };
+
+  const requireAuth = () => {
+    if (window.ExclusiveAuth?.isAuthenticated?.()) {
+      return true;
+    }
+
+    redirectToAuth();
+    return false;
+  };
+
   const normalizeCartItem = (item) => {
     const productId = sanitizeText(item?.productId, "exclusive-item");
     const size = sanitizeText(item?.size, "ONE SIZE");
@@ -169,6 +184,10 @@
   };
 
   const addToCart = (item) => {
+    if (!requireAuth()) {
+      return null;
+    }
+
     const cart = readCart();
     const normalized = normalizeCartItem(item);
     const existingItem = cart.find((entry) => entry.lineId === normalized.lineId);

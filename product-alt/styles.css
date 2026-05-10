@@ -1,6 +1,7 @@
 :root {
   --header-height: 48px;
-  --page-padding: 75px;
+  --page-padding: 72px;
+  --container-width: 1440px;
   --text-color: #0d0d0d;
   --surface-color: #ffffff;
   --footer-color: #242424;
@@ -60,7 +61,8 @@ button {
 }
 
 .container-fluid {
-  width: 100%;
+  width: min(100%, var(--container-width));
+  margin: 0 auto;
   padding-inline: var(--page-padding);
 }
 
@@ -641,6 +643,11 @@ body.menu-open .menu-toggle span:nth-child(3) {
 .product-actions-block__favorite.is-active {
   background: #111;
   color: #fff;
+}
+
+#header-favorite-link.is-active svg path {
+  fill: #111;
+  stroke: #111;
 }
 
 .product-meta {

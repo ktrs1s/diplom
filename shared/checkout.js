@@ -41,7 +41,7 @@
     return 490;
   };
 
-  const buildOrderDraft = (items, user) => {
+  const buildOrderDraft = (items, user, details = {}) => {
     const subtotal = window.ExclusiveStore?.getSubtotal(items) || 0;
     const delivery = getDeliveryPrice(subtotal);
     const total = subtotal + delivery;
@@ -70,6 +70,7 @@
       subtotal,
       delivery,
       total,
+      city: sanitizeText(details.city),
       sourceUrl: `${window.location.pathname}${window.location.search}`,
     };
   };
@@ -128,13 +129,14 @@
       subtotal: order.subtotal,
       delivery: order.delivery,
       total: order.total,
+      city: order.city,
       sourceUrl: order.sourceUrl,
     });
 
     return {
       order: data.order,
-      botUrl: sanitizeText(data.botUrl, config.getTelegramBotUrl(`order_${order.id}`)),
       botReady: Boolean(data.botReady),
+      managerNotified: Boolean(data.managerNotified),
       source: "api",
     };
   };
@@ -170,7 +172,7 @@
     }
   };
 
-  const beginCheckout = async ({ items, returnUrl = `${window.location.pathname}${window.location.search}` } = {}) => {
+  const beginCheckout = async ({ items, details = {}, returnUrl = `${window.location.pathname}${window.location.search}` } = {}) => {
     const nextItems = Array.isArray(items) ? items : window.ExclusiveStore?.getCart?.() || [];
 
     if (!nextItems.length) {
@@ -186,20 +188,17 @@
       };
     }
 
-    const draft = buildOrderDraft(nextItems, currentUser);
+    const draft = buildOrderDraft(nextItems, currentUser, details);
 
     try {
       const result = await createRemoteOrder(draft);
-      window.location.href = result.botUrl;
       return result;
     } catch (error) {
       if (error?.isApiResponse) {
         throw error;
       }
 
-      const fallback = createLocalOrder(draft);
-      window.location.href = fallback.botUrl;
-      return fallback;
+      throw new Error("Не удалось отправить заказ администратору. Попробуйте еще раз.");
     }
   };
 

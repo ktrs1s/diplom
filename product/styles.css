@@ -66,6 +66,12 @@ button {
   padding-inline: var(--page-padding);
 }
 
+.site-header .container-fluid {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
 .site-header {
   position: fixed;
   top: 0;

@@ -53,6 +53,8 @@ const summaryDeliveryNode = document.getElementById("summary-delivery");
 const summaryTotalNode = document.getElementById("summary-total");
 const deliveryNoteNode = document.getElementById("delivery-note");
 const checkoutButton = document.getElementById("checkout-button");
+const checkoutCityInput = document.getElementById("checkout-city");
+const orderSuccessModal = document.getElementById("order-success-modal");
 const profileLinks = document.querySelectorAll("[data-profile-link]");
 
 const headerToggle = document.getElementById("cart-header-toggle");
@@ -169,7 +171,7 @@ const syncCheckoutButton = () => {
   const hasItems = window.ExclusiveStore.getCart().length > 0;
   const isAuthorized = window.ExclusiveAuth?.isAuthenticated?.() || false;
 
-  checkoutButton.textContent = isAuthorized ? "Подтвердить в Telegram" : "Войти и продолжить";
+  checkoutButton.textContent = isAuthorized ? "Оформить заказ" : "Войти и продолжить";
   checkoutButton.classList.toggle("is-disabled", !hasItems);
   checkoutButton.setAttribute("aria-disabled", String(!hasItems));
 };
@@ -241,6 +243,25 @@ const syncCartView = () => {
   renderCartItems(window.ExclusiveStore.getCart());
 };
 
+const closeOrderSuccessModal = () => {
+  if (!orderSuccessModal) {
+    return;
+  }
+
+  orderSuccessModal.hidden = true;
+  document.body.classList.remove("order-success-open");
+};
+
+const openOrderSuccessModal = () => {
+  if (!orderSuccessModal) {
+    return;
+  }
+
+  orderSuccessModal.hidden = false;
+  document.body.classList.add("order-success-open");
+  orderSuccessModal.querySelector(".order-success__primary")?.focus();
+};
+
 const initCartInteractions = () => {
   cartItemsNode?.addEventListener("click", (event) => {
     const removeButton = event.target.closest("[data-remove-line]");
@@ -283,14 +304,46 @@ const initCartInteractions = () => {
       return;
     }
 
+    const city = checkoutCityInput?.value.trim() || "";
+
+    if (!city) {
+      if (deliveryNoteNode) {
+        deliveryNoteNode.textContent = "Укажите город, чтобы менеджер смог уточнить оформление заказа.";
+      }
+
+      checkoutCityInput?.focus();
+      return;
+    }
+
     try {
-      await window.ExclusiveCheckout?.beginCheckout({
+      checkoutButton.classList.add("is-disabled");
+      checkoutButton.setAttribute("aria-disabled", "true");
+      checkoutButton.textContent = "Отправляем";
+
+      const result = await window.ExclusiveCheckout?.beginCheckout({
         items: window.ExclusiveStore.getCart(),
+        details: {
+          city,
+        },
       });
+
+      if (deliveryNoteNode) {
+        deliveryNoteNode.textContent = result?.managerNotified
+          ? "Заказ отправлен администратору. Мы свяжемся с вами для подтверждения."
+          : "Заказ создан, но Telegram-уведомление не отправилось. Проверьте настройки бота.";
+      }
+
+      if (!result?.redirected) {
+        window.ExclusiveStore.clearCart();
+        openOrderSuccessModal();
+      }
+
+      checkoutButton.textContent = "Заказ отправлен";
     } catch (error) {
       if (deliveryNoteNode) {
         deliveryNoteNode.textContent = error.message || "Не удалось перейти к оформлению.";
       }
+      syncCheckoutButton();
     }
   });
 };
@@ -333,11 +386,26 @@ const initDrawer = () => {
   });
 };
 
+const initOrderSuccessModal = () => {
+  orderSuccessModal?.addEventListener("click", (event) => {
+    if (event.target.closest("[data-order-success-close]")) {
+      closeOrderSuccessModal();
+    }
+  });
+
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !orderSuccessModal?.hidden) {
+      closeOrderSuccessModal();
+    }
+  });
+};
+
 const initPage = () => {
   renderDrawerTree();
   syncCartView();
   initCartInteractions();
   initDrawer();
+  initOrderSuccessModal();
   window.ExclusiveStore.mountCartBadge(headerCartBadge);
   window.ExclusiveAuth?.mountProfileLinks(profileLinks);
   syncCheckoutButton();
@@ -345,10 +413,6 @@ const initPage = () => {
   if (currentYearNode) {
     currentYearNode.textContent = String(new Date().getFullYear());
   }
-
-  document.querySelectorAll("[data-telegram-link]").forEach((link) => {
-    link.setAttribute("href", window.ExclusiveSiteConfig?.getTelegramBotUrl?.() || "https://t.me/");
-  });
 
   if (window.ExclusiveCheckout?.consumePendingIntent?.() === "checkout" && window.ExclusiveStore.getCart().length > 0) {
     window.setTimeout(() => {
