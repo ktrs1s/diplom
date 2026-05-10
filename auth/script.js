@@ -2,7 +2,10 @@ const authTabs = Array.from(document.querySelectorAll("[data-auth-tab]"));
 const loginPanel = document.getElementById("auth-login-panel");
 const registerPanel = document.getElementById("auth-register-panel");
 const loginForm = document.getElementById("login-form");
+const loginSubmitButton = document.getElementById("login-submit");
 const registerForm = document.getElementById("register-form");
+const registerSubmitButton = document.getElementById("register-submit");
+const registerPersonalDataCheckbox = document.getElementById("register-personal-data");
 const noticeNode = document.getElementById("auth-notice");
 const headerCartBadge = document.getElementById("header-cart-badge");
 const currentYearNode = document.getElementById("current-year");
@@ -12,10 +15,9 @@ const mobileMenu = document.getElementById("mobile-menu");
 const mobileMenuClose = document.getElementById("mobile-menu-close");
 const mobileMenuBackdrop = document.getElementById("mobile-menu-backdrop");
 const profileLinks = document.querySelectorAll("[data-profile-link]");
-const phoneInputs = [
-  document.getElementById("login-phone"),
-  document.getElementById("register-phone"),
-].filter(Boolean);
+const loginIdentityInput = document.getElementById("login-identity");
+const registerPhoneInput = document.getElementById("register-phone");
+const passwordToggles = Array.from(document.querySelectorAll("[data-password-toggle]"));
 
 const catalogApi = window.ExclusiveCatalog;
 const authParams = new URLSearchParams(window.location.search);
@@ -81,51 +83,25 @@ const bindPhoneMask = (input) => {
     input.value = formatPhoneInput(input.value);
   };
 
+  const handlePaste = (event) => {
+    const pastedValue = event.clipboardData?.getData("text") || "";
+    const pastedDigits = pastedValue.replace(/[^\d]/g, "");
+
+    if (pastedDigits.length < 10) {
+      return;
+    }
+
+    event.preventDefault();
+    input.value = formatPhoneInput(pastedValue);
+
+    window.requestAnimationFrame(() => {
+      input.setSelectionRange(input.value.length, input.value.length);
+    });
+  };
+
   input.addEventListener("focus", applyMask);
+  input.addEventListener("paste", handlePaste);
   input.addEventListener("input", applyMask);
-  input.addEventListener("keydown", (event) => {
-    if (!["Backspace", "Delete"].includes(event.key)) {
-      return;
-    }
-
-    const start = input.selectionStart ?? input.value.length;
-    const end = input.selectionEnd ?? start;
-
-    if (start !== end) {
-      return;
-    }
-
-    const rawValue = input.value;
-    const digits = getPhoneDigits(rawValue);
-    const digitsBeforeCursor = getPhoneDigits(rawValue.slice(0, start)).length;
-    const targetIndex = event.key === "Backspace" ? start - 1 : start;
-    const targetChar = rawValue[targetIndex] || "";
-
-    if (start <= 2 && event.key === "Backspace") {
-      event.preventDefault();
-      input.value = "+7";
-      return;
-    }
-
-    if (targetChar && /\D/.test(targetChar)) {
-      event.preventDefault();
-      const removeIndex = event.key === "Backspace" ? digitsBeforeCursor - 1 : digitsBeforeCursor;
-
-      if (removeIndex < 0 || removeIndex >= digits.length) {
-        return;
-      }
-
-      const nextDigits = `${digits.slice(0, removeIndex)}${digits.slice(removeIndex + 1)}`;
-      input.value = formatPhoneInput(nextDigits);
-      const nextCaret = Math.max(2, Math.min(input.value.length, start - (event.key === "Backspace" ? 1 : 0)));
-
-      window.requestAnimationFrame(() => {
-        input.setSelectionRange(nextCaret, nextCaret);
-      });
-    }
-  });
-
-  applyMask();
 };
 
 const setNotice = (message, type = "") => {
@@ -143,6 +119,24 @@ const setNotice = (message, type = "") => {
   noticeNode.hidden = false;
   noticeNode.textContent = message;
   noticeNode.classList.toggle("is-error", type === "error");
+};
+
+const setLoginLoading = (isLoading) => {
+  if (!loginSubmitButton) {
+    return;
+  }
+
+  loginSubmitButton.disabled = isLoading;
+  loginSubmitButton.textContent = isLoading ? "Проверяем..." : "Войти";
+};
+
+const setRegisterLoading = (isLoading) => {
+  if (!registerSubmitButton) {
+    return;
+  }
+
+  registerSubmitButton.disabled = isLoading;
+  registerSubmitButton.textContent = isLoading ? "Проверяем..." : "Зарегистрироваться";
 };
 
 const setActiveTab = (nextTab) => {
@@ -223,6 +217,11 @@ const redirectAfterAuth = () => {
     return;
   }
 
+  if (redirectTarget && redirectTarget !== "/" && redirectTarget.startsWith("/")) {
+    window.location.href = redirectTarget;
+    return;
+  }
+
   if (window.ExclusiveAuth?.isAdminUser?.(window.ExclusiveAuth?.getCurrentUser?.())) {
     window.location.href = "/admin/";
     return;
@@ -237,8 +236,38 @@ const handleSuccess = (message) => {
 };
 
 const initEvents = () => {
-  phoneInputs.forEach((input) => {
-    bindPhoneMask(input);
+  bindPhoneMask(registerPhoneInput);
+
+  passwordToggles.forEach((button) => {
+    const input = document.getElementById(button.getAttribute("aria-controls") || "");
+
+    if (!input) {
+      return;
+    }
+
+    button.addEventListener("click", () => {
+      const shouldShow = input.type === "password";
+      input.type = shouldShow ? "text" : "password";
+      button.classList.toggle("is-active", shouldShow);
+      button.setAttribute("aria-label", shouldShow ? "Скрыть пароль" : "Показать пароль");
+    });
+  });
+
+  [loginForm, registerForm].filter(Boolean).forEach((form) => {
+    form.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" || event.isComposing) {
+        return;
+      }
+
+      const target = event.target;
+
+      if (target?.matches?.("textarea, button, [type='checkbox'], [type='radio']")) {
+        return;
+      }
+
+      event.preventDefault();
+      form.requestSubmit();
+    });
   });
 
   authTabs.forEach((button) => {
@@ -255,10 +284,16 @@ const initEvents = () => {
     const formData = new FormData(loginForm);
 
     try {
-      await window.ExclusiveAuth.login(formData.get("phone"));
+      setLoginLoading(true);
+      await window.ExclusiveAuth.login({
+        login: formData.get("login"),
+        password: formData.get("password"),
+      });
       handleSuccess("Вход выполнен.");
     } catch (error) {
       setNotice(error.message || "Не удалось войти.", "error");
+    } finally {
+      setLoginLoading(false);
     }
   });
 
@@ -266,17 +301,28 @@ const initEvents = () => {
     event.preventDefault();
     setNotice("");
 
+    if (registerPersonalDataCheckbox && !registerPersonalDataCheckbox.checked) {
+      setNotice("Примите условия соглашения.", "error");
+      return;
+    }
+
     const formData = new FormData(registerForm);
 
     try {
+      setRegisterLoading(true);
       await window.ExclusiveAuth.register({
         firstName: formData.get("firstName"),
         lastName: formData.get("lastName"),
+        city: formData.get("city"),
         phone: formData.get("phone"),
+        email: formData.get("email"),
+        password: formData.get("password"),
       });
       handleSuccess("Аккаунт создан.");
     } catch (error) {
       setNotice(error.message || "Не удалось создать аккаунт.", "error");
+    } finally {
+      setRegisterLoading(false);
     }
   });
 };
@@ -298,9 +344,7 @@ const initPage = () => {
     currentYearNode.textContent = String(new Date().getFullYear());
   }
 
-  document.querySelectorAll("[data-telegram-link]").forEach((link) => {
-    link.setAttribute("href", window.ExclusiveSiteConfig?.getTelegramBotUrl?.() || "https://t.me/");
-  });
+  loginIdentityInput?.focus();
 };
 
 initPage();

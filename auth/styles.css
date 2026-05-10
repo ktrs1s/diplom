@@ -14,7 +14,7 @@
 }
 
 .auth-page {
-  padding: 56px 0 72px;
+  padding: 76px 0 72px;
 }
 
 .auth-page__inner {
@@ -127,6 +127,62 @@
   border-color: rgba(23, 23, 23, 0.2);
 }
 
+.auth-password {
+  position: relative;
+  display: block;
+}
+
+.auth-field .auth-password input {
+  width: 100%;
+  padding-right: 78px;
+}
+
+.auth-password__toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  width: 46px;
+  height: 46px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid rgba(23, 23, 23, 0.1);
+  border-radius: 50%;
+  background: #ffffff;
+  color: #4b4b4b;
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease;
+}
+
+.auth-password__toggle:hover,
+.auth-password__toggle:focus-visible {
+  border-color: rgba(23, 23, 23, 0.22);
+  color: #171717;
+  outline: none;
+}
+
+.auth-password__toggle.is-active {
+  background: #171717;
+  border-color: #171717;
+  color: #ffffff;
+}
+
+.auth-password__toggle svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.auth-code-field input {
+  max-width: 220px;
+  letter-spacing: 0.18em;
+  text-align: center;
+}
+
 .auth-primary {
   min-height: 58px;
   border: 0;
@@ -137,9 +193,42 @@
   cursor: pointer;
 }
 
+.auth-legal-note {
+  margin: -2px 0 0;
+  color: #6f6a63;
+  font-size: 12px;
+  line-height: 1.45;
+  text-transform: none;
+}
+
+.auth-legal-note a,
+.auth-consent a {
+  color: #171717;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.auth-consent {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  color: #6f6a63;
+  font-size: 12px;
+  line-height: 1.45;
+  text-transform: none;
+}
+
+.auth-consent input {
+  width: 18px;
+  height: 18px;
+  margin: 1px 0 0;
+  accent-color: #171717;
+}
+
 @media (max-width: 767px) {
   .auth-page {
-    padding: 28px 0 40px;
+    padding: 44px 0 40px;
   }
 
   .auth-card {

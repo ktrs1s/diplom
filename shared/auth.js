@@ -4,7 +4,7 @@
   const SESSION_STORAGE_KEY = "exclusive-session-v1";
   const LOCAL_ORDERS_STORAGE_KEY = "exclusive-orders-v1";
   const AUTH_EVENT = "exclusive:authchange";
-  const SESSION_TTL_MS = 15 * 60 * 1000;
+  const SESSION_TTL_MS = 180 * 24 * 60 * 60 * 1000;
 
   const buildAuthPageUrl = () => new URL("/auth/", window.location.origin);
   const buildAccountPageUrl = () => new URL("/account/", window.location.origin);
@@ -44,6 +44,11 @@
     return `+${digits}`;
   };
 
+  const normalizeEmail = (value) => {
+    const email = sanitizeText(String(value || "").toLowerCase());
+    return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? email : "";
+  };
+
   const formatPhone = (value) => {
     const normalized = normalizePhone(value);
     const digits = normalized.replace(/[^\d]/g, "");
@@ -67,6 +72,8 @@
     firstName: "Demo",
     lastName: "Client",
     phone: normalizePhone(config.demoPhone || "+79999999999"),
+    city: "",
+    email: "",
     createdAt: Date.now(),
   });
 
@@ -103,7 +110,9 @@
         id: sanitizeText(entry?.id, `user-${Date.now()}`),
         firstName: sanitizeText(entry?.firstName),
         lastName: sanitizeText(entry?.lastName),
+        city: sanitizeText(entry?.city),
         phone: normalizePhone(entry?.phone),
+        email: normalizeEmail(entry?.email),
         createdAt: Number(entry?.createdAt) || Date.now(),
       }))
       .filter((entry) => entry.firstName && entry.lastName && entry.phone);
@@ -132,6 +141,7 @@
         ...account,
         ...changes,
         phone: normalizePhone(changes.phone ?? account.phone),
+        email: normalizeEmail(changes.email ?? account.email),
       };
     });
 
@@ -146,7 +156,9 @@
       id: sanitizeText(user?.id, `user-${Date.now()}`),
       firstName: sanitizeText(user?.firstName),
       lastName: sanitizeText(user?.lastName),
+      city: sanitizeText(user?.city),
       phone: normalizedPhone,
+      email: normalizeEmail(user?.email),
       createdAt: Date.now(),
     };
     const existingIndex = accounts.findIndex((entry) => entry.phone === normalizedPhone);
@@ -196,7 +208,9 @@
         id: sanitizeText(session.user.id),
         firstName: sanitizeText(session.user.firstName),
         lastName: sanitizeText(session.user.lastName),
+        city: sanitizeText(session.user.city),
         phone: normalizePhone(session.user.phone),
+        email: normalizeEmail(session.user.email),
       },
     };
   };
@@ -219,7 +233,9 @@
         id: sanitizeText(user?.id),
         firstName: sanitizeText(user?.firstName),
         lastName: sanitizeText(user?.lastName),
+        city: sanitizeText(user?.city),
         phone: normalizePhone(user?.phone),
+        email: normalizeEmail(user?.email),
       },
     });
     emitAuthChange();
@@ -248,8 +264,13 @@
   const getSessionToken = () => getSession()?.sessionToken || "";
   const isAuthenticated = () => Boolean(getCurrentUser());
   const isAdminUser = (user = getCurrentUser()) => Boolean(user?.phone && config.isAdminPhone?.(normalizePhone(user.phone)));
+  const wait = (delay) => new Promise((resolve) => window.setTimeout(resolve, delay));
+  const isTemporaryApiErrorMessage = (message) =>
+    /api proxy|urlopen|connection refused|connection reset|failed to fetch|networkerror|bad gateway|gateway timeout|upstream/i.test(
+      String(message || ""),
+    );
 
-  const requestJson = async (path, payload) => {
+  const requestJson = async (path, payload, attempt = 0) => {
     if (typeof window.fetch !== "function" || !config.apiBaseUrl) {
       throw new Error("API unavailable");
     }
@@ -265,6 +286,11 @@
         body: JSON.stringify(payload),
       });
     } catch (error) {
+      if (attempt < 3) {
+        await wait(600 + attempt * 700);
+        return requestJson(path, payload, attempt + 1);
+      }
+
       const nextError = new Error("API unavailable");
       nextError.isApiResponse = false;
       throw nextError;
@@ -275,12 +301,24 @@
     if (!response.ok || data.success === false) {
       const rawError = data.error || "Не удалось выполнить запрос.";
       const isSessionError = /сессия/i.test(String(rawError));
+      const isTemporaryApiError = isTemporaryApiErrorMessage(rawError);
+
+      if (isTemporaryApiError && attempt < 3) {
+        await wait(600 + attempt * 700);
+        return requestJson(path, payload, attempt + 1);
+      }
 
       if (isSessionError) {
         clearSession();
       }
 
-      const nextError = new Error(isSessionError ? "Сессия истекла. Войди снова." : rawError);
+      const nextError = new Error(
+        isSessionError
+          ? "Сессия истекла. Войди снова."
+          : isTemporaryApiError
+            ? "Сервер авторизации временно недоступен. Попробуй еще раз через несколько секунд."
+            : rawError,
+      );
       nextError.isApiResponse = true;
       throw nextError;
     }
@@ -288,56 +326,25 @@
     return data;
   };
 
-  const login = async (phone) => {
-    const normalizedPhone = normalizePhone(phone);
-
-    if (!normalizedPhone) {
-      throw new Error("Введите номер телефона.");
-    }
-
-    try {
-      const data = await requestJson("auth/login", { phone: normalizedPhone });
-      upsertAccount(data.user);
-      saveSession({
-        user: data.user,
-        sessionToken: data.sessionToken,
-      });
-      return data.user;
-    } catch (error) {
-      if (error?.isApiResponse) {
-        throw error;
-      }
-
-      const account = getStoredAccounts().find((entry) => entry.phone === normalizedPhone);
-
-      if (!account) {
-        throw new Error("Аккаунт с таким номером не найден.");
-      }
-
-      saveSession({
-        user: account,
-        sessionToken: "",
-      });
-      return account;
-    }
+  const normalizeLogin = (value) => {
+    const trimmed = sanitizeText(value);
+    return normalizeEmail(trimmed) || normalizePhone(trimmed);
   };
 
-  const register = async ({ firstName, lastName, phone }) => {
-    const normalizedFirstName = sanitizeText(firstName);
-    const normalizedLastName = sanitizeText(lastName);
-    const normalizedPhone = normalizePhone(phone);
+  const login = async ({ login: loginValue, password }) => {
+    const normalizedLogin = normalizeLogin(loginValue);
+    const normalizedPassword = String(password || "");
 
-    if (!normalizedFirstName || !normalizedLastName || !normalizedPhone) {
-      throw new Error("Заполните имя, фамилию и телефон.");
+    if (!normalizedLogin || !normalizedPassword) {
+      throw new Error("Введите номер телефона или адрес электронной почты и пароль.");
     }
 
-    try {
-      const data = await requestJson("auth/register", {
-        firstName: normalizedFirstName,
-        lastName: normalizedLastName,
-        phone: normalizedPhone,
-      });
+    const data = await requestJson("auth/login", {
+      login: normalizedLogin,
+      password: normalizedPassword,
+    });
 
+    if (data.user && data.sessionToken) {
       upsertAccount(data.user);
       saveSession({
         user: data.user,
@@ -345,33 +352,47 @@
       });
 
       return data.user;
-    } catch (error) {
-      if (error?.isApiResponse) {
-        throw error;
-      }
-
-      const accounts = getStoredAccounts();
-
-      if (accounts.some((entry) => entry.phone === normalizedPhone)) {
-        throw new Error("Аккаунт с таким номером уже существует.");
-      }
-
-      const user = {
-        id: `user-${Date.now()}`,
-        firstName: normalizedFirstName,
-        lastName: normalizedLastName,
-        phone: normalizedPhone,
-        createdAt: Date.now(),
-      };
-
-      accounts.unshift(user);
-      saveAccounts(accounts);
-      saveSession({
-        user,
-        sessionToken: "",
-      });
-      return user;
     }
+
+    return data;
+  };
+
+  const register = async ({ firstName, lastName, city, phone, email, password }) => {
+    const normalizedFirstName = sanitizeText(firstName);
+    const normalizedLastName = sanitizeText(lastName);
+    const normalizedCity = sanitizeText(city);
+    const normalizedPhone = normalizePhone(phone);
+    const normalizedEmail = normalizeEmail(email);
+    const normalizedPassword = String(password || "");
+
+    if (!normalizedFirstName || !normalizedLastName || !normalizedCity || !normalizedPhone || !normalizedEmail) {
+      throw new Error("Заполните имя, фамилию, город, телефон и почту.");
+    }
+
+    if (normalizedPassword.length < 6) {
+      throw new Error("Пароль должен быть не короче 6 символов.");
+    }
+
+    const data = await requestJson("auth/register", {
+      firstName: normalizedFirstName,
+      lastName: normalizedLastName,
+      city: normalizedCity,
+      phone: normalizedPhone,
+      email: normalizedEmail,
+      password: normalizedPassword,
+    });
+
+    if (data.user && data.sessionToken) {
+      upsertAccount(data.user);
+      saveSession({
+        user: data.user,
+        sessionToken: data.sessionToken,
+      });
+
+      return data.user;
+    }
+
+    return data;
   };
 
   const logout = async () => {
@@ -426,7 +447,7 @@
     }
   };
 
-  const updateProfile = async ({ firstName, lastName, phone }) => {
+  const updateProfile = async ({ firstName, lastName, city, phone, email }) => {
     const currentUser = getCurrentUser();
 
     if (!currentUser) {
@@ -436,11 +457,13 @@
     const payload = {
       firstName: sanitizeText(firstName),
       lastName: sanitizeText(lastName),
+      city: sanitizeText(city),
       phone: normalizePhone(phone),
+      email: normalizeEmail(email),
     };
 
-    if (!payload.firstName || !payload.lastName || !payload.phone) {
-      throw new Error("Заполните имя, фамилию и телефон.");
+    if (!payload.firstName || !payload.lastName || !payload.city || !payload.phone || !payload.email) {
+      throw new Error("Заполните имя, фамилию, город, телефон и почту.");
     }
 
     try {
@@ -477,6 +500,7 @@
             firstName: nextUser.firstName,
             lastName: nextUser.lastName,
             phone: nextUser.phone,
+            email: nextUser.email,
           },
         };
       });
@@ -555,6 +579,7 @@
     login,
     logout,
     mountProfileLinks,
+    normalizeEmail,
     normalizePhone,
     register,
     updateProfile,

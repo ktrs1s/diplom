@@ -10,23 +10,13 @@ const mobileMenuBackdrop = document.getElementById("mobile-menu-backdrop");
 const noticeNode = document.getElementById("account-notice");
 const accountForm = document.getElementById("account-form");
 const logoutButton = document.getElementById("logout-button");
-const ordersNode = document.getElementById("account-orders");
-const emptyOrdersNode = document.getElementById("account-empty-orders");
 const firstNameInput = document.getElementById("account-first-name");
 const lastNameInput = document.getElementById("account-last-name");
+const cityInput = document.getElementById("account-city");
 const phoneInput = document.getElementById("account-phone");
+const emailInput = document.getElementById("account-email");
 
 const catalogApi = window.ExclusiveCatalog;
-const accountParams = new URLSearchParams(window.location.search);
-
-const ORDER_STATUS_LABELS = {
-  draft: "Черновик",
-  pending_manager: "Ждет менеджера",
-  accepted: "Подтвержден",
-  shipping: "Передан в доставку",
-  completed: "Завершен",
-  cancelled: "Отменен",
-};
 
 const NOTICE_TIMEOUT_MS = 2400;
 let noticeTimer = 0;
@@ -114,7 +104,24 @@ const bindPhoneMask = (input) => {
     input.value = formatPhoneInput(input.value);
   };
 
+  const handlePaste = (event) => {
+    const pastedValue = event.clipboardData?.getData("text") || "";
+    const pastedDigits = pastedValue.replace(/[^\d]/g, "");
+
+    if (pastedDigits.length < 10) {
+      return;
+    }
+
+    event.preventDefault();
+    input.value = formatPhoneInput(pastedValue);
+
+    window.requestAnimationFrame(() => {
+      input.setSelectionRange(input.value.length, input.value.length);
+    });
+  };
+
   input.addEventListener("focus", applyMask);
+  input.addEventListener("paste", handlePaste);
   input.addEventListener("input", applyMask);
   input.addEventListener("keydown", (event) => {
     if (!["Backspace", "Delete"].includes(event.key)) {
@@ -161,60 +168,6 @@ const bindPhoneMask = (input) => {
   applyMask();
 };
 
-const renderOrders = (orders) => {
-  if (!ordersNode || !emptyOrdersNode) {
-    return;
-  }
-
-  const completedOrders = (orders || []).filter((order) => order.status === "completed");
-
-  if (!completedOrders.length) {
-    ordersNode.innerHTML = "";
-    emptyOrdersNode.hidden = false;
-    return;
-  }
-
-  emptyOrdersNode.hidden = true;
-  ordersNode.innerHTML = completedOrders
-    .map((order) => {
-      const dateValue = order.createdAt ? new Date(order.createdAt).toLocaleDateString("ru-RU") : "";
-      const orderItems = Array.isArray(order.items) ? order.items : [];
-      const thumbnails = orderItems
-        .slice(0, 4)
-        .map((item) => {
-          const productImage = catalogApi?.getProductById?.(item.productId)?.image || "";
-          if (!productImage) {
-            return "";
-          }
-
-          return `
-            <figure class="account-order__thumb">
-              <img src="${escapeHtml(productImage)}" alt="${escapeHtml(item.title || "Товар EXCLUSIVE")}" loading="lazy">
-            </figure>
-          `;
-        })
-        .join("");
-      const extraCount = Math.max(0, orderItems.length - 4);
-
-      return `
-        <article class="account-order">
-          <div class="account-order__head">
-            <div class="account-order__copy">
-              <h3 class="account-order__date">Заказ от ${escapeHtml(dateValue || "Без даты")}</h3>
-              <p class="account-order__id">${escapeHtml(order.id || "Заказ EXCLUSIVE")}</p>
-            </div>
-            <strong class="account-order__total">${window.ExclusiveStore?.formatPrice(order.total || 0) || `${order.total || 0} ₽`}</strong>
-          </div>
-          <div class="account-order__gallery" ${thumbnails ? "" : "hidden"}>
-            ${thumbnails}
-            ${extraCount ? `<span class="account-order__more">+${extraCount}</span>` : ""}
-          </div>
-        </article>
-      `;
-    })
-    .join("");
-};
-
 const fillForm = (user) => {
   if (firstNameInput) {
     firstNameInput.value = user.firstName || "";
@@ -224,8 +177,16 @@ const fillForm = (user) => {
     lastNameInput.value = user.lastName || "";
   }
 
+  if (cityInput) {
+    cityInput.value = user.city || "";
+  }
+
   if (phoneInput) {
     phoneInput.value = formatPhoneInput(user.phone || "");
+  }
+
+  if (emailInput) {
+    emailInput.value = user.email || "";
   }
 };
 
@@ -280,7 +241,6 @@ const loadAccount = async () => {
   try {
     const data = await window.ExclusiveAuth.getAccountData();
     fillForm(data.user);
-    renderOrders(data.orders || []);
   } catch (error) {
     if (/сессия/i.test(String(error.message || ""))) {
       await window.ExclusiveAuth.logout();
@@ -306,7 +266,9 @@ const initEvents = () => {
       await window.ExclusiveAuth.updateProfile({
         firstName: formData.get("firstName"),
         lastName: formData.get("lastName"),
+        city: formData.get("city"),
         phone: formData.get("phone"),
+        email: formData.get("email"),
       });
       await loadAccount();
       window.ExclusiveAuth.mountProfileLinks(profileLinks);
@@ -352,10 +314,6 @@ const initPage = async () => {
   if (currentYearNode) {
     currentYearNode.textContent = String(new Date().getFullYear());
   }
-
-  document.querySelectorAll("[data-telegram-link]").forEach((link) => {
-    link.setAttribute("href", window.ExclusiveSiteConfig?.getTelegramBotUrl?.() || "https://t.me/");
-  });
 };
 
 initPage();
