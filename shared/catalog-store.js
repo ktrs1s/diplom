@@ -3,7 +3,7 @@
   const CATALOG_EVENT = "exclusive:catalogchange";
   const DEFAULT_PALETTE = ["#f4eee6", "#ccb39d"];
   const moneyFormatter = new Intl.NumberFormat("ru-RU");
-  const inMemoryFallback = { categories: [], products: [] };
+  const inMemoryFallback = { categories: [], products: [], banners: [] };
   const config = window.ExclusiveSiteConfig || {};
   let readyPromise = null;
 
@@ -284,10 +284,47 @@
     return {
       categories: Array.isArray(data.categories) ? data.categories : [],
       products: Array.isArray(data.products) ? data.products : [],
+      banners: Array.isArray(data.banners) ? data.banners : [],
     };
   };
 
   const createDataUriSvg = (svg) => `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+  const createHeroPlaceholder = (label, palette, mobile = false) => {
+    const colors = normalizePalette(palette);
+    const viewBox = mobile ? "0 0 780 1680" : "0 0 1600 900";
+    const width = mobile ? 780 : 1600;
+    const height = mobile ? 1680 : 900;
+    const circleOne = mobile
+      ? '<circle cx="620" cy="250" r="140" fill="rgba(255,255,255,0.12)"/>'
+      : '<circle cx="1280" cy="160" r="120" fill="rgba(255,255,255,0.12)"/>';
+    const circleTwo = mobile
+      ? '<circle cx="120" cy="1240" r="180" fill="rgba(255,255,255,0.1)"/>'
+      : '<circle cx="250" cy="700" r="180" fill="rgba(255,255,255,0.1)"/>';
+    const labelSize = mobile ? 66 : 72;
+    const hintSize = mobile ? 28 : 30;
+    const safeLabel = sanitizeText(label, "EXCLUSIVE")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;");
+
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}">
+        <defs>
+          <linearGradient id="hero-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="${colors[0]}"/>
+            <stop offset="100%" stop-color="${colors[1]}"/>
+          </linearGradient>
+        </defs>
+        <rect width="${width}" height="${height}" fill="url(#hero-bg)"/>
+        ${circleOne}
+        ${circleTwo}
+        <text x="50%" y="50%" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="${labelSize}" font-weight="400">${safeLabel}</text>
+        <text x="50%" y="57%" text-anchor="middle" fill="rgba(255,255,255,0.82)" font-family="Arial, sans-serif" font-size="${hintSize}">Замените на свое фото</text>
+      </svg>
+    `;
+
+    return createDataUriSvg(svg);
+  };
   const formatPrice = (value) => `${moneyFormatter.format(Math.max(0, Math.round(Number(value) || 0)))} ₽`;
 
   const normalizePrice = (value) => {
@@ -369,6 +406,42 @@
 
     return createDataUriSvg(svg);
   };
+
+  const DEFAULT_BANNERS = [
+    {
+      id: "hero-01",
+      href: "/catalog/",
+      desktopImage: createHeroPlaceholder("БАННЕР 01", ["#d9d0c9", "#8f847d"]),
+      mobileImage: createHeroPlaceholder("БАННЕР 01", ["#d9d0c9", "#8f847d"], true),
+      createdAt: 1,
+      orderIndex: 0,
+    },
+    {
+      id: "hero-02",
+      href: "/new/",
+      desktopImage: createHeroPlaceholder("БАННЕР 02", ["#d5c7c3", "#9c8178"]),
+      mobileImage: createHeroPlaceholder("БАННЕР 02", ["#d5c7c3", "#9c8178"], true),
+      createdAt: 2,
+      orderIndex: 1,
+    },
+    {
+      id: "hero-03",
+      href: "/hit/",
+      desktopImage: createHeroPlaceholder("БАННЕР 03", ["#cfcbbf", "#787166"]),
+      mobileImage: createHeroPlaceholder("БАННЕР 03", ["#cfcbbf", "#787166"], true),
+      createdAt: 3,
+      orderIndex: 2,
+    },
+    {
+      id: "hero-04",
+      title: "Интернет-магазин женской одежды EXCLUSIVE",
+      href: "/catalog/",
+      desktopImage: createHeroPlaceholder("EXCLUSIVE", ["#c8c1bb", "#5d5956"]),
+      mobileImage: createHeroPlaceholder("EXCLUSIVE", ["#c8c1bb", "#5d5956"], true),
+      createdAt: 4,
+      orderIndex: 3,
+    },
+  ];
 
   const createStudioPhoto = ({ coatColor, accentColor, background, crop = "full", hairColor = "#3d2b21" }) => {
     const cropMap = {
@@ -657,7 +730,7 @@
       orderIndex: orderIndex++,
     }));
 
-    return { categories, products };
+    return { categories, products, banners: clone(DEFAULT_BANNERS) };
   };
 
   const getStorageCandidates = () => {
@@ -735,6 +808,34 @@
     return raw;
   };
 
+  const normalizeBanner = (banner, index, usedIds, maxOrderIndex = -1) => {
+    const fallbackTitle = index === 3 ? "Интернет-магазин женской одежды EXCLUSIVE" : "";
+    const title = sanitizeText(banner?.title, fallbackTitle);
+    const id = ensureUniqueKey(slugify(banner?.id || title || `hero-${index + 1}`, `hero-${index + 1}`), usedIds);
+    const desktopImage =
+      normalizeImageSource(banner?.desktopImage || banner?.image) ||
+      createHeroPlaceholder(title || `БАННЕР ${String(index + 1).padStart(2, "0")}`, ["#d9d0c9", "#8f847d"]);
+    const mobileImage =
+      normalizeImageSource(banner?.mobileImage) ||
+      desktopImage ||
+      createHeroPlaceholder(title || `БАННЕР ${String(index + 1).padStart(2, "0")}`, ["#d9d0c9", "#8f847d"], true);
+    const rawOrderIndex = Number(banner?.orderIndex);
+
+    usedIds.add(id);
+
+    return {
+      id,
+      title,
+      text: sanitizeText(banner?.text, ""),
+      button: sanitizeText(banner?.button, ""),
+      href: sanitizeText(banner?.href, "/catalog/"),
+      desktopImage,
+      mobileImage,
+      createdAt: Number(banner?.createdAt) || Date.now() + index,
+      orderIndex: Number.isFinite(rawOrderIndex) ? rawOrderIndex : maxOrderIndex + index + 1,
+    };
+  };
+
   const normalizeCatalog = (rawData) => {
     const defaults = getDefaultData();
     const sourceCategories = Array.isArray(rawData?.categories) && rawData.categories.length ? rawData.categories : defaults.categories;
@@ -749,8 +850,16 @@
       maxOrderIndex = Math.max(maxOrderIndex, normalized.orderIndex);
       return normalized;
     });
+    const sourceBanners = Array.isArray(rawData?.banners) && rawData.banners.length ? rawData.banners : defaults.banners;
+    const usedBannerIds = new Set();
+    let maxBannerOrderIndex = -1;
+    const banners = sourceBanners.map((banner, index) => {
+      const normalized = normalizeBanner(banner, index, usedBannerIds, maxBannerOrderIndex);
+      maxBannerOrderIndex = Math.max(maxBannerOrderIndex, normalized.orderIndex);
+      return normalized;
+    });
 
-    return { categories, products };
+    return { categories, products, banners };
   };
 
   const readCatalog = () => {
@@ -768,7 +877,7 @@
       }
     }
 
-    if (inMemoryFallback.categories.length || inMemoryFallback.products.length) {
+    if (inMemoryFallback.categories.length || inMemoryFallback.products.length || inMemoryFallback.banners.length) {
       return normalizeCatalog(inMemoryFallback);
     }
 
@@ -781,18 +890,20 @@
         detail: {
           categories: clone(data.categories),
           products: clone(data.products),
+          banners: clone(data.banners),
         },
       }),
     );
   };
 
-  const saveCatalog = (data) => {
+  const saveCatalog = (data, options = {}) => {
     const previousSerialized = JSON.stringify(normalizeCatalog(readCatalog()));
     const normalized = normalizeCatalog(data);
     const serialized = JSON.stringify(normalized);
 
     inMemoryFallback.categories = clone(normalized.categories);
     inMemoryFallback.products = clone(normalized.products);
+    inMemoryFallback.banners = clone(normalized.banners);
 
     for (const storage of getStorageCandidates()) {
       const written = writeToStorage(storage, serialized);
@@ -801,14 +912,14 @@
       }
     }
 
-    if (serialized !== previousSerialized) {
+    if (serialized !== previousSerialized && options.emit !== false) {
       emitCatalogChange(normalized);
     }
 
     return normalized;
   };
 
-  const saveCatalogRemotely = async (data) => {
+  const saveCatalogRemotely = async (data, options = {}) => {
     if (!isRemoteAvailable()) {
       return normalizeCatalog(data);
     }
@@ -820,7 +931,22 @@
       });
       return saveCatalog(remoteCatalog);
     } catch (error) {
+      if (options.throwOnError) {
+        throw error;
+      }
+
       return normalizeCatalog(data);
+    }
+  };
+
+  const saveCatalogWithRemote = async (data, previousData = readCatalog()) => {
+    const nextCatalog = saveCatalog(data);
+
+    try {
+      return await saveCatalogRemotely(nextCatalog, { throwOnError: true });
+    } catch (error) {
+      saveCatalog(previousData);
+      throw error;
     }
   };
 
@@ -841,7 +967,7 @@
           sessionToken: window.ExclusiveAuth?.getSessionToken?.() || "",
           ...localCatalog,
         });
-        return saveCatalog(remoteCatalog);
+        return saveCatalog(remoteCatalog, { emit: false });
       } catch (error) {
         return localCatalog;
       }
@@ -935,7 +1061,62 @@
     };
   };
 
-  const addCategory = (payload) => {
+  const getBanners = () => clone(getData().banners).sort((first, second) => first.orderIndex - second.orderIndex);
+
+  const saveBanner = async (payload, bannerId = null) => {
+    const data = getData();
+    const existingBanner = bannerId ? data.banners.find((banner) => banner.id === bannerId) : null;
+    const existingIds = new Set(data.banners.filter((banner) => banner.id !== bannerId).map((banner) => banner.id));
+    const maxOrderIndex = data.banners.reduce((max, banner) => Math.max(max, Number(banner.orderIndex) || 0), -1);
+    const draft = {
+      ...existingBanner,
+      id: existingBanner?.id || ensureUniqueKey(slugify(payload?.title || payload?.id || `hero-${Date.now()}`, "hero"), existingIds),
+      title: sanitizeText(payload?.title, existingBanner?.title || ""),
+      text: sanitizeText(payload?.text, existingBanner?.text || ""),
+      button: sanitizeText(payload?.button, existingBanner?.button || ""),
+      href: sanitizeText(payload?.href, existingBanner?.href || "/catalog/"),
+      desktopImage: normalizeImageSource(payload?.desktopImage) || normalizeImageSource(existingBanner?.desktopImage),
+      mobileImage: normalizeImageSource(payload?.mobileImage) || normalizeImageSource(existingBanner?.mobileImage),
+      createdAt: existingBanner?.createdAt || Date.now(),
+      orderIndex: existingBanner?.orderIndex ?? maxOrderIndex + 1,
+    };
+    const usedIds = new Set(data.banners.filter((banner) => banner.id !== bannerId).map((banner) => banner.id));
+    const nextBanner = normalizeBanner(draft, data.banners.length, usedIds, maxOrderIndex);
+    const banners = existingBanner
+      ? data.banners.map((banner) => (banner.id === bannerId ? nextBanner : banner))
+      : [...data.banners, nextBanner];
+
+    return saveCatalogWithRemote(
+      {
+        categories: data.categories,
+        products: data.products,
+        banners,
+      },
+      data,
+    );
+  };
+
+  const addBanner = (payload) => saveBanner(payload, null);
+  const updateBanner = (bannerId, payload) => saveBanner(payload, bannerId);
+
+  const deleteBanner = async (bannerId) => {
+    const data = getData();
+
+    if (data.banners.length <= 1) {
+      return data;
+    }
+
+    return saveCatalogWithRemote(
+      {
+        categories: data.categories,
+        products: data.products,
+        banners: data.banners.filter((banner) => banner.id !== bannerId),
+      },
+      data,
+    );
+  };
+
+  const addCategory = async (payload) => {
     const data = getData();
     const existingKeys = new Set(data.categories.map((category) => category.key));
     const title = sanitizeText(payload?.title, "Новая категория");
@@ -950,19 +1131,18 @@
       createdAt: Date.now(),
     };
 
-    const nextCatalog = saveCatalog({
+    const nextCatalog = {
       categories: [...data.categories, nextCategory],
       products: data.products,
-    });
+    };
 
-    void saveCatalogRemotely(nextCatalog);
-    return nextCatalog;
+    return saveCatalogWithRemote(nextCatalog, data);
   };
 
-  const updateCategory = (categoryKey, payload) => {
+  const updateCategory = async (categoryKey, payload) => {
     const data = getData();
 
-    const nextCatalog = saveCatalog({
+    const nextCatalog = {
       categories: data.categories.map((category) =>
         category.key === categoryKey
           ? {
@@ -975,28 +1155,26 @@
           : category,
       ),
       products: data.products,
-    });
+    };
 
-    void saveCatalogRemotely(nextCatalog);
-    return nextCatalog;
+    return saveCatalogWithRemote(nextCatalog, data);
   };
 
-  const deleteCategory = (categoryKey) => {
+  const deleteCategory = async (categoryKey) => {
     const data = getData();
     if (data.categories.length <= 1) {
       return data;
     }
 
-    const nextCatalog = saveCatalog({
+    const nextCatalog = {
       categories: data.categories.filter((category) => category.key !== categoryKey),
       products: data.products.filter((product) => product.categoryKey !== categoryKey),
-    });
+    };
 
-    void saveCatalogRemotely(nextCatalog);
-    return nextCatalog;
+    return saveCatalogWithRemote(nextCatalog, data);
   };
 
-  const saveProduct = (payload, productId = null) => {
+  const saveProduct = async (payload, productId = null) => {
     const data = getData();
     const existingProduct = productId ? data.products.find((product) => product.id === productId) : null;
     const categoryKey = sanitizeText(payload?.categoryKey, existingProduct?.categoryKey || data.categories[0]?.key || "outerwear");
@@ -1011,9 +1189,34 @@
       existingProduct?.palette || category?.palette || DEFAULT_PALETTE,
     );
     const normalizedImage = normalizeImageSource(payload?.image);
+    const normalizedGallery = Array.isArray(payload?.gallery)
+      ? payload.gallery
+          .map((entry) => {
+            const src = normalizeImageSource(entry?.src || entry);
+
+            if (!src) {
+              return null;
+            }
+
+            return {
+              src,
+              alt: sanitizeText(entry?.alt, title),
+            };
+          })
+          .filter(Boolean)
+      : null;
+    const nextGallery = normalizedGallery && normalizedGallery.length
+      ? normalizedGallery
+      : normalizedImage
+        ? [{ src: normalizedImage, alt: title }]
+        : Array.isArray(existingProduct?.gallery)
+          ? existingProduct.gallery
+          : [];
+    const nextImage = nextGallery[0]?.src || normalizedImage || normalizeImageSource(existingProduct?.image);
     const currentLabel = existingProduct?.label || makeLabel(existingProduct?.title || "Товар EXCLUSIVE");
     const hasMediaChanges =
       normalizedImage !== "" ||
+      Boolean(normalizedGallery) ||
       title !== (existingProduct?.title || "") ||
       nextLabel !== currentLabel ||
       palette[0] !== (existingProduct?.palette?.[0] || "") ||
@@ -1033,8 +1236,8 @@
       colors: normalizeColorList(payload?.colors ?? existingProduct?.colors, palette),
       palette,
       label: nextLabel,
-      image: hasMediaChanges ? normalizedImage : normalizeImageSource(existingProduct?.image),
-      gallery: hasMediaChanges ? [] : Array.isArray(existingProduct?.gallery) ? existingProduct.gallery : [],
+      image: hasMediaChanges ? nextImage : normalizeImageSource(existingProduct?.image),
+      gallery: hasMediaChanges ? nextGallery : Array.isArray(existingProduct?.gallery) ? existingProduct.gallery : [],
       description: sanitizeText(payload?.description, existingProduct?.description || `${title}. Новая модель EXCLUSIVE для повседневного гардероба.`),
       composition: sanitizeText(payload?.composition, existingProduct?.composition || "Состав уточняется в карточке товара EXCLUSIVE."),
       care: Array.isArray(payload?.care) && payload.care.length
@@ -1067,26 +1270,25 @@
       ? data.products.map((product) => (product.id === productId ? nextProduct : product))
       : [...data.products, nextProduct];
 
-    const nextCatalog = saveCatalog({
+    const nextCatalog = {
       categories: data.categories,
       products,
-    });
+    };
 
-    void saveCatalogRemotely(nextCatalog);
-    return nextCatalog;
+    return saveCatalogWithRemote(nextCatalog, data);
   };
 
   const addProduct = (payload) => saveProduct(payload, null);
   const updateProduct = (productId, payload) => saveProduct(payload, productId);
 
-  const deleteProduct = (productId) => {
-    const nextCatalog = saveCatalog({
-      categories: getData().categories,
-      products: getData().products.filter((product) => product.id !== productId),
-    });
+  const deleteProduct = async (productId) => {
+    const data = getData();
+    const nextCatalog = {
+      categories: data.categories,
+      products: data.products.filter((product) => product.id !== productId),
+    };
 
-    void saveCatalogRemotely(nextCatalog);
-    return nextCatalog;
+    return saveCatalogWithRemote(nextCatalog, data);
   };
 
   window.addEventListener("storage", (event) => {
@@ -1098,15 +1300,19 @@
   window.ExclusiveCatalog = {
     CATALOG_EVENT,
     STORAGE_KEY,
+    addBanner,
     addCategory,
     addProduct,
+    deleteBanner,
     deleteCategory,
     deleteProduct,
     formatPrice,
+    getBanners,
     getCategories,
     getCategoryByKey,
     getData,
     getHomeCollections,
+    getHeroSlides: getBanners,
     getMenuGroups,
     getProductById,
     getProducts,
@@ -1114,6 +1320,7 @@
     normalizePrice,
     refreshFromRemote: () => bootstrapRemoteCatalog(),
     slugify,
+    updateBanner,
     updateCategory,
     updateProduct,
   };

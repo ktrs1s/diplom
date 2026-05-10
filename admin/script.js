@@ -29,6 +29,25 @@ const toolbarMetaNode = document.getElementById("admin-toolbar-meta");
 const categoryFilterNode = document.getElementById("admin-category-filter");
 const productGridNode = document.getElementById("admin-product-grid");
 const productEmptyNode = document.getElementById("admin-product-empty");
+const bannerCountNode = document.getElementById("admin-banner-count");
+const newBannerButton = document.getElementById("admin-new-banner");
+const bannerListNode = document.getElementById("admin-banner-list");
+const bannerEmptyNode = document.getElementById("admin-banner-empty");
+const bannerEditorTitleNode = document.getElementById("admin-banner-editor-title");
+const bannerForm = document.getElementById("admin-banner-editor-form");
+const bannerSaveButton = bannerForm?.querySelector('button[type="submit"]');
+const bannerDeleteButton = document.getElementById("admin-banner-delete");
+const bannerResetButton = document.getElementById("admin-banner-reset");
+const bannerIdInput = document.getElementById("admin-banner-id");
+const bannerTitleInput = document.getElementById("admin-banner-title");
+const bannerTextInput = document.getElementById("admin-banner-text");
+const bannerButtonInput = document.getElementById("admin-banner-button");
+const bannerHrefInput = document.getElementById("admin-banner-href");
+const bannerDesktopImageInput = document.getElementById("admin-banner-desktop-image");
+const bannerDesktopFileInput = document.getElementById("admin-banner-desktop-file");
+const bannerMobileImageInput = document.getElementById("admin-banner-mobile-image");
+const bannerMobileFileInput = document.getElementById("admin-banner-mobile-file");
+const bannerPreviewNode = document.getElementById("admin-banner-preview");
 
 const productEditorTitleNode = document.getElementById("admin-product-editor-title");
 const openProductLink = document.getElementById("admin-open-product-link");
@@ -47,7 +66,7 @@ const productColorsInput = document.getElementById("admin-product-colors");
 const productImageInput = document.getElementById("admin-product-image");
 const productImageFileInput = document.getElementById("admin-product-image-file");
 const productImagePreviewBlock = document.getElementById("admin-product-image-preview-block");
-const productImagePreview = document.getElementById("admin-product-image-preview");
+const productImagePreviewList = document.getElementById("admin-product-image-preview-list");
 const productImagePreviewCaption = document.getElementById("admin-product-image-preview-caption");
 const productDescriptionInput = document.getElementById("admin-product-description");
 const productCompositionInput = document.getElementById("admin-product-composition");
@@ -76,8 +95,10 @@ const state = {
   currentUser: null,
   selectedCategoryKey: "",
   selectedProductId: "",
+  selectedBannerId: "",
   search: "",
   productEditorImageValue: "",
+  productEditorGalleryValues: [],
 };
 
 let noticeTimer = 0;
@@ -164,6 +185,37 @@ const normalizeImageSource = (value) => {
   return raw;
 };
 
+const getProductGallerySources = (product) => {
+  const sources = Array.isArray(product?.gallery)
+    ? product.gallery
+        .map((entry) => normalizeImageSource(entry?.src || entry))
+        .filter(Boolean)
+    : [];
+  const primary = normalizeImageSource(product?.image);
+
+  return [...new Set([primary, ...sources].filter(Boolean))];
+};
+
+const normalizeGallerySources = (values) =>
+  [...new Set((Array.isArray(values) ? values : [])
+    .map((value) => normalizeImageSource(value))
+    .filter(Boolean))];
+
+const parseGalleryText = (value) =>
+  normalizeGallerySources(
+    String(value ?? "")
+      .split(/\r?\n/)
+      .map((item) => item.trim()),
+  );
+
+const getTextGallerySources = () =>
+  parseGalleryText(productImageInput?.value || "");
+
+const syncPrimaryImageFromGallery = () => {
+  state.productEditorGalleryValues = normalizeGallerySources(state.productEditorGalleryValues);
+  state.productEditorImageValue = state.productEditorGalleryValues[0] || "";
+};
+
 const readFileAsDataUrl = (file) =>
   new Promise((resolve, reject) => {
     if (!file) {
@@ -176,6 +228,63 @@ const readFileAsDataUrl = (file) =>
     reader.onerror = () => reject(new Error("Не удалось прочитать изображение."));
     reader.readAsDataURL(file);
   });
+
+const syncProductImageTextInput = () => {
+  if (!productImageInput) {
+    return;
+  }
+
+  productImageInput.value = state.productEditorGalleryValues
+    .filter((value) => !String(value).startsWith("data:"))
+    .join("\n");
+};
+
+const uploadProductFiles = async (files) => {
+  const apiUrl = window.ExclusiveSiteConfig?.getApiUrl?.("uploads");
+
+  if (!apiUrl) {
+    throw new Error("Сервер загрузки временно недоступен.");
+  }
+
+  const encodedFiles = await Promise.all(
+    files.map(async (file) => ({
+      name: file.name || "product-image",
+      dataUrl: await readFileAsDataUrl(file),
+    })),
+  );
+
+  const response = await window.fetch(apiUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      sessionToken: window.ExclusiveAuth?.getSessionToken?.() || "",
+      files: encodedFiles,
+    }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok || data.success === false) {
+    throw new Error(data.error || "Не удалось загрузить фотографии.");
+  }
+
+  return Array.isArray(data.files)
+    ? data.files.map((file) => normalizeImageSource(file?.url)).filter(Boolean)
+    : [];
+};
+
+const uploadSingleImageFile = async (fileInput) => {
+  const file = Array.from(fileInput?.files || [])[0];
+
+  if (!file) {
+    return "";
+  }
+
+  const uploaded = await uploadProductFiles([file]);
+  return uploaded[0] || "";
+};
 
 const setNotice = (message, type = "") => {
   if (!adminNoticeNode) {
@@ -205,8 +314,44 @@ const setNotice = (message, type = "") => {
   }
 };
 
+const getErrorMessage = (error) =>
+  error?.message || "Не удалось сохранить изменения на сервере. Попробуй ещё раз.";
+
+const setProductSaving = (saving) => {
+  if (productSaveButton) {
+    productSaveButton.disabled = saving || !productCategoryInput.value;
+  }
+
+  if (productDeleteButton) {
+    productDeleteButton.disabled = saving || !productIdInput.value;
+  }
+};
+
+const setCategorySaving = (saving) => {
+  const submitButton = categoryForm?.querySelector('button[type="submit"]');
+
+  if (submitButton) {
+    submitButton.disabled = saving;
+  }
+
+  if (categoryDeleteButton) {
+    categoryDeleteButton.disabled = saving || !categoryKeyInput.value;
+  }
+};
+
+const setBannerSaving = (saving) => {
+  if (bannerSaveButton) {
+    bannerSaveButton.disabled = saving;
+  }
+
+  if (bannerDeleteButton) {
+    bannerDeleteButton.disabled = saving || !bannerIdInput.value;
+  }
+};
+
 const getCategories = () => catalogApi?.getCategories?.() || [];
 const getProducts = () => catalogApi?.getProducts?.() || [];
+const getBanners = () => catalogApi?.getBanners?.() || catalogApi?.getHeroSlides?.() || [];
 
 const getVisibleProducts = () => {
   if (!state.selectedCategoryKey) {
@@ -270,24 +415,111 @@ const initMobileMenu = () => {
 };
 
 const renderProductImagePreview = () => {
-  const value = state.productEditorImageValue || "";
+  const values = normalizeGallerySources(state.productEditorGalleryValues);
 
-  if (!productImagePreviewBlock || !productImagePreview || !productImagePreviewCaption) {
+  if (!productImagePreviewBlock || !productImagePreviewList || !productImagePreviewCaption) {
     return;
   }
 
-  if (!value) {
+  if (!values.length) {
     productImagePreviewBlock.hidden = true;
-    productImagePreview.removeAttribute("src");
+    productImagePreviewList.innerHTML = "";
     productImagePreviewCaption.textContent = "";
     return;
   }
 
   productImagePreviewBlock.hidden = false;
-  productImagePreview.src = value;
-  productImagePreviewCaption.textContent = value.startsWith("data:")
-    ? "Файл выбран и будет сохранён в карточке товара."
-    : value;
+  productImagePreviewList.innerHTML = values
+    .map(
+      (value, index) => `
+        <div class="admin-image-preview__frame">
+          <img src="${escapeHtml(value)}" alt="Превью изображения товара ${index + 1}">
+          <button class="admin-image-preview__remove" type="button" data-remove-image-index="${index}" aria-label="Удалить фото ${index + 1}">×</button>
+        </div>
+      `,
+    )
+    .join("");
+  productImagePreviewCaption.textContent = values.length === 1
+    ? "Добавлено 1 фото. Оно будет основным в карточке товара."
+    : `Добавлено ${values.length} фото. Первое фото будет основным в карточке товара.`;
+};
+
+const getBannerDesktopImageValue = () => normalizeImageSource(bannerDesktopImageInput?.value || "");
+const getBannerMobileImageValue = () => normalizeImageSource(bannerMobileImageInput?.value || "") || getBannerDesktopImageValue();
+
+const renderBannerPreview = () => {
+  if (!bannerPreviewNode) {
+    return;
+  }
+
+  const desktopImage = getBannerDesktopImageValue();
+  const mobileImage = getBannerMobileImageValue();
+
+  if (!desktopImage && !mobileImage) {
+    bannerPreviewNode.hidden = true;
+    bannerPreviewNode.innerHTML = "";
+    return;
+  }
+
+  bannerPreviewNode.hidden = false;
+  bannerPreviewNode.innerHTML = `
+    <div class="admin-banner-preview__frame admin-banner-preview__frame--desktop">
+      <img src="${escapeHtml(desktopImage || mobileImage)}" alt="Desktop-превью баннера">
+    </div>
+    <div class="admin-banner-preview__frame admin-banner-preview__frame--mobile">
+      <img src="${escapeHtml(mobileImage || desktopImage)}" alt="Mobile-превью баннера">
+    </div>
+  `;
+};
+
+const resetBannerEditor = () => {
+  state.selectedBannerId = "";
+  bannerEditorTitleNode.textContent = "Новый баннер";
+  bannerIdInput.value = "";
+  bannerTitleInput.value = "";
+  bannerTextInput.value = "";
+  bannerButtonInput.value = "";
+  bannerHrefInput.value = "/catalog/";
+  bannerDesktopImageInput.value = "";
+  bannerMobileImageInput.value = "";
+  if (bannerDesktopFileInput) {
+    bannerDesktopFileInput.value = "";
+  }
+  if (bannerMobileFileInput) {
+    bannerMobileFileInput.value = "";
+  }
+  if (bannerDeleteButton) {
+    bannerDeleteButton.disabled = true;
+  }
+  renderBannerPreview();
+};
+
+const renderBannerEditor = () => {
+  const banner = state.selectedBannerId ? getBanners().find((item) => item.id === state.selectedBannerId) : null;
+
+  if (!banner) {
+    resetBannerEditor();
+    return;
+  }
+
+  bannerEditorTitleNode.textContent = banner.title || "Баннер";
+  bannerIdInput.value = banner.id;
+  bannerTitleInput.value = banner.title || "";
+  bannerTextInput.value = banner.text || "";
+  bannerButtonInput.value = banner.button || "";
+  bannerHrefInput.value = banner.href || "/catalog/";
+  bannerDesktopImageInput.value = banner.desktopImage || "";
+  bannerMobileImageInput.value = banner.mobileImage || "";
+  if (bannerDesktopFileInput) {
+    bannerDesktopFileInput.value = "";
+  }
+  if (bannerMobileFileInput) {
+    bannerMobileFileInput.value = "";
+  }
+  if (bannerDeleteButton) {
+    bannerDeleteButton.disabled = false;
+  }
+  renderBannerPreview();
 };
 
 const fillProductCategoryOptions = (selectedKey = "") => {
@@ -319,6 +551,7 @@ const resetProductEditor = ({ preserveCategory = true } = {}) => {
 
   state.selectedProductId = "";
   state.productEditorImageValue = "";
+  state.productEditorGalleryValues = [];
   productEditorTitleNode.textContent = defaultCategoryKey ? "Новый товар" : "Сначала выбери категорию";
   productIdInput.value = "";
   fillProductCategoryOptions(defaultCategoryKey);
@@ -363,8 +596,9 @@ const renderProductEditor = () => {
   productLabelInput.value = product.label || "";
   productSizesInput.value = (product.sizes || []).join(", ");
   productColorsInput.value = (product.colors || []).map((color) => color.name || color).join(", ");
-  state.productEditorImageValue = product.image || "";
-  productImageInput.value = String(product.image || "").startsWith("data:") ? "" : product.image || "";
+  state.productEditorGalleryValues = getProductGallerySources(product);
+  syncPrimaryImageFromGallery();
+  syncProductImageTextInput();
   if (productImageFileInput) {
     productImageFileInput.value = "";
   }
@@ -416,6 +650,10 @@ const renderStats = () => {
   if (productCountNode) {
     productCountNode.textContent = String(getProducts().length);
   }
+
+  if (bannerCountNode) {
+    bannerCountNode.textContent = String(getBanners().length);
+  }
 };
 
 const renderToolbar = () => {
@@ -453,6 +691,42 @@ const renderCategoryFilter = () => {
           <span class="admin-filter__title">${escapeHtml(category.title)}</span>
           <span class="admin-filter__meta">${counts.get(category.key) || 0} товаров</span>
         </button>
+      `;
+    })
+    .join("");
+};
+
+const renderBannerList = () => {
+  if (!bannerListNode || !bannerEmptyNode) {
+    return;
+  }
+
+  const banners = getBanners();
+
+  if (!banners.length) {
+    bannerListNode.hidden = true;
+    bannerListNode.innerHTML = "";
+    bannerEmptyNode.hidden = false;
+    return;
+  }
+
+  bannerEmptyNode.hidden = true;
+  bannerListNode.hidden = false;
+  bannerListNode.innerHTML = banners
+    .map((banner, index) => {
+      const selected = state.selectedBannerId === banner.id;
+      const title = banner.title || `Баннер ${index + 1}`;
+      return `
+        <article class="admin-banner-card ${selected ? "is-selected" : ""}">
+          <button class="admin-banner-card__hit" type="button" data-banner-id="${escapeHtml(banner.id)}" aria-label="${escapeHtml(title)}"></button>
+          <div class="admin-banner-card__media">
+            <img src="${escapeHtml(banner.desktopImage || banner.mobileImage || "")}" alt="${escapeHtml(title)}" loading="lazy">
+          </div>
+          <div class="admin-banner-card__meta">
+            <h3 class="admin-banner-card__title">${escapeHtml(title)}</h3>
+            <span class="admin-banner-card__link">${escapeHtml(banner.href || "/catalog/")}</span>
+          </div>
+        </article>
       `;
     })
     .join("");
@@ -527,6 +801,10 @@ const createProductPayload = () => ({
   sizes: splitCommaValues(productSizesInput.value),
   colors: splitCommaValues(productColorsInput.value),
   image: state.productEditorImageValue,
+  gallery: state.productEditorGalleryValues.map((src) => ({
+    src,
+    alt: productTitleInput.value || "Фото товара EXCLUSIVE",
+  })),
   description: productDescriptionInput.value,
   composition: productCompositionInput.value,
   features: parseFeatureLines(productFeaturesInput.value),
@@ -542,8 +820,19 @@ const createCategoryPayload = () => ({
   paletteEnd: categoryPaletteEndInput.value,
 });
 
+const createBannerPayload = () => ({
+  title: bannerTitleInput.value,
+  text: bannerTextInput.value,
+  button: bannerButtonInput.value,
+  href: bannerHrefInput.value || "/catalog/",
+  desktopImage: getBannerDesktopImageValue(),
+  mobileImage: getBannerMobileImageValue(),
+});
+
 const rerender = () => {
   renderStats();
+  renderBannerList();
+  renderBannerEditor();
   renderToolbar();
   renderCategoryFilter();
   renderProductGrid();
@@ -592,6 +881,18 @@ const selectProduct = (productId) => {
   resetCategoryEditor();
 };
 
+const selectBanner = (bannerId) => {
+  const banner = getBanners().find((item) => item.id === bannerId);
+
+  if (!banner) {
+    return;
+  }
+
+  state.selectedBannerId = bannerId;
+  renderBannerList();
+  renderBannerEditor();
+};
+
 const initEditorActions = () => {
   newCategoryButton?.addEventListener("click", () => {
     state.selectedCategoryKey = "";
@@ -619,6 +920,12 @@ const initEditorActions = () => {
     setNotice("");
   });
 
+  newBannerButton?.addEventListener("click", () => {
+    resetBannerEditor();
+    renderBannerList();
+    setNotice("");
+  });
+
   productSearchNode?.addEventListener("input", () => {
     state.search = productSearchNode.value.trim();
     renderToolbar();
@@ -643,28 +950,117 @@ const initEditorActions = () => {
     selectProduct(button.dataset.productId || "");
   });
 
+  bannerListNode?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-banner-id]");
+    if (!button) {
+      return;
+    }
+
+    selectBanner(button.dataset.bannerId || "");
+  });
+
   productResetButton?.addEventListener("click", () => {
     resetProductEditor({ preserveCategory: true });
   });
 
+  bannerResetButton?.addEventListener("click", () => {
+    if (state.selectedBannerId) {
+      renderBannerEditor();
+      return;
+    }
+
+    resetBannerEditor();
+  });
+
+  [bannerTitleInput, bannerTextInput, bannerButtonInput, bannerHrefInput, bannerDesktopImageInput, bannerMobileImageInput].forEach((input) => {
+    input?.addEventListener("input", renderBannerPreview);
+  });
+
   productImageInput?.addEventListener("input", () => {
-    state.productEditorImageValue = normalizeImageSource(productImageInput.value);
+    state.productEditorGalleryValues = normalizeGallerySources([
+      ...getTextGallerySources(),
+      ...state.productEditorGalleryValues.filter((value) => String(value).startsWith("data:")),
+    ]);
+    syncPrimaryImageFromGallery();
+    renderProductImagePreview();
+  });
+
+  productImagePreviewList?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-remove-image-index]");
+
+    if (!button) {
+      return;
+    }
+
+    const index = Number(button.dataset.removeImageIndex);
+
+    if (!Number.isInteger(index)) {
+      return;
+    }
+
+    state.productEditorGalleryValues = state.productEditorGalleryValues.filter((_, imageIndex) => imageIndex !== index);
+    syncPrimaryImageFromGallery();
+    syncProductImageTextInput();
     renderProductImagePreview();
   });
 
   productImageFileInput?.addEventListener("change", async () => {
-    const file = productImageFileInput.files?.[0];
+    const files = Array.from(productImageFileInput.files || []);
 
-    if (!file) {
+    if (!files.length) {
       return;
     }
 
     try {
-      state.productEditorImageValue = await readFileAsDataUrl(file);
-      productImageInput.value = file.name || "";
+      setNotice("Загружаю фотографии...");
+      const fileImages = await uploadProductFiles(files);
+      state.productEditorGalleryValues = normalizeGallerySources([
+        ...state.productEditorGalleryValues,
+        ...fileImages,
+      ]);
+      syncPrimaryImageFromGallery();
+      syncProductImageTextInput();
       renderProductImagePreview();
+      setNotice("Фотографии загружены. Нажми «Сохранить товар», чтобы обновить карточку.");
     } catch (error) {
-      setNotice("Не удалось прочитать изображение. Попробуй выбрать файл ещё раз.", "error");
+      setNotice(getErrorMessage(error), "error");
+    } finally {
+      productImageFileInput.value = "";
+    }
+  });
+
+  bannerDesktopFileInput?.addEventListener("change", async () => {
+    try {
+      setNotice("Загружаю desktop-картинку баннера...");
+      const imageUrl = await uploadSingleImageFile(bannerDesktopFileInput);
+      if (imageUrl) {
+        bannerDesktopImageInput.value = imageUrl;
+        if (!bannerMobileImageInput.value.trim()) {
+          bannerMobileImageInput.value = imageUrl;
+        }
+        renderBannerPreview();
+        setNotice("Картинка загружена. Нажми «Сохранить», чтобы обновить баннер.");
+      }
+    } catch (error) {
+      setNotice(getErrorMessage(error), "error");
+    } finally {
+      bannerDesktopFileInput.value = "";
+    }
+  });
+
+  bannerMobileFileInput?.addEventListener("change", async () => {
+    try {
+      setNotice("Загружаю mobile-картинку баннера...");
+      const imageUrl = await uploadSingleImageFile(bannerMobileFileInput);
+      if (imageUrl) {
+        bannerMobileImageInput.value = imageUrl;
+        renderBannerPreview();
+        setNotice("Картинка загружена. Нажми «Сохранить», чтобы обновить баннер.");
+      }
+    } catch (error) {
+      setNotice(getErrorMessage(error), "error");
+    } finally {
+      bannerMobileFileInput.value = "";
     }
   });
 
@@ -678,7 +1074,7 @@ const initEditorActions = () => {
     categoryDescriptionInput.value = "";
   });
 
-  productDeleteButton?.addEventListener("click", () => {
+  productDeleteButton?.addEventListener("click", async () => {
     const productId = productIdInput.value;
 
     if (!productId) {
@@ -689,13 +1085,23 @@ const initEditorActions = () => {
       return;
     }
 
-    catalogApi.deleteProduct(productId);
-    resetProductEditor({ preserveCategory: true });
-    rerender();
-    setNotice("Успешно.");
+    setNotice("Сохраняю изменения...");
+    setProductSaving(true);
+
+    try {
+      await catalogApi.deleteProduct(productId);
+      resetProductEditor({ preserveCategory: true });
+      rerender();
+      setNotice("Успешно.");
+    } catch (error) {
+      setNotice(getErrorMessage(error), "error");
+      rerender();
+    } finally {
+      setProductSaving(false);
+    }
   });
 
-  categoryDeleteButton?.addEventListener("click", () => {
+  categoryDeleteButton?.addEventListener("click", async () => {
     const categoryKey = categoryKeyInput.value;
 
     if (!categoryKey) {
@@ -706,16 +1112,89 @@ const initEditorActions = () => {
       return;
     }
 
-    catalogApi.deleteCategory(categoryKey);
-    state.selectedCategoryKey = "";
-    state.selectedProductId = "";
-    categoryTitleInput.value = "";
-    categoryDescriptionInput.value = "";
-    rerender();
-    setNotice("Успешно.");
+    setNotice("Сохраняю изменения...");
+    setCategorySaving(true);
+
+    try {
+      await catalogApi.deleteCategory(categoryKey);
+      state.selectedCategoryKey = "";
+      state.selectedProductId = "";
+      categoryTitleInput.value = "";
+      categoryDescriptionInput.value = "";
+      rerender();
+      setNotice("Успешно.");
+    } catch (error) {
+      setNotice(getErrorMessage(error), "error");
+      rerender();
+    } finally {
+      setCategorySaving(false);
+    }
   });
 
-  productForm?.addEventListener("submit", (event) => {
+  bannerDeleteButton?.addEventListener("click", async () => {
+    const bannerId = bannerIdInput.value;
+
+    if (!bannerId) {
+      return;
+    }
+
+    if (!window.confirm("Удалить этот баннер с главной страницы?")) {
+      return;
+    }
+
+    setNotice("Сохраняю изменения...");
+    setBannerSaving(true);
+
+    try {
+      await catalogApi.deleteBanner(bannerId);
+      const nextBanner = getBanners()[0] || null;
+      state.selectedBannerId = nextBanner?.id || "";
+      rerender();
+      setNotice("Успешно.");
+    } catch (error) {
+      setNotice(getErrorMessage(error), "error");
+      rerender();
+    } finally {
+      setBannerSaving(false);
+    }
+  });
+
+  bannerForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const beforeIds = new Set(getBanners().map((banner) => banner.id));
+    const bannerId = bannerIdInput.value;
+    const payload = createBannerPayload();
+
+    if (!payload.desktopImage) {
+      setNotice("Добавь картинку для баннера.", "error");
+      return;
+    }
+
+    setNotice("Сохраняю изменения...");
+    setBannerSaving(true);
+
+    try {
+      if (bannerId) {
+        await catalogApi.updateBanner(bannerId, payload);
+        state.selectedBannerId = bannerId;
+      } else {
+        await catalogApi.addBanner(payload);
+        const created = getBanners().find((banner) => !beforeIds.has(banner.id)) || null;
+        state.selectedBannerId = created?.id || "";
+      }
+
+      rerender();
+      setNotice("Успешно.");
+    } catch (error) {
+      setNotice(getErrorMessage(error), "error");
+      rerender();
+    } finally {
+      setBannerSaving(false);
+    }
+  });
+
+  productForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
 
     const beforeIds = new Set(getProducts().map((product) => product.id));
@@ -727,38 +1206,58 @@ const initEditorActions = () => {
       return;
     }
 
-    if (productId) {
-      catalogApi.updateProduct(productId, payload);
-      state.selectedProductId = productId;
-    } else {
-      catalogApi.addProduct(payload);
-      const created = getProducts().find((product) => !beforeIds.has(product.id)) || null;
-      state.selectedProductId = created?.id || "";
-    }
+    setNotice("Сохраняю изменения...");
+    setProductSaving(true);
 
-    state.selectedCategoryKey = payload.categoryKey || state.selectedCategoryKey;
-    rerender();
-    setNotice("Успешно.");
+    try {
+      if (productId) {
+        await catalogApi.updateProduct(productId, payload);
+        state.selectedProductId = productId;
+      } else {
+        await catalogApi.addProduct(payload);
+        const created = getProducts().find((product) => !beforeIds.has(product.id)) || null;
+        state.selectedProductId = created?.id || "";
+      }
+
+      state.selectedCategoryKey = payload.categoryKey || state.selectedCategoryKey;
+      rerender();
+      setNotice("Успешно.");
+    } catch (error) {
+      setNotice(getErrorMessage(error), "error");
+      rerender();
+    } finally {
+      setProductSaving(false);
+    }
   });
 
-  categoryForm?.addEventListener("submit", (event) => {
+  categoryForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
 
     const beforeKeys = new Set(getCategories().map((category) => category.key));
     const categoryKey = categoryKeyInput.value;
     const payload = createCategoryPayload();
 
-    if (categoryKey) {
-      catalogApi.updateCategory(categoryKey, payload);
-      state.selectedCategoryKey = categoryKey;
-    } else {
-      catalogApi.addCategory(payload);
-      const created = getCategories().find((category) => !beforeKeys.has(category.key)) || null;
-      state.selectedCategoryKey = created?.key || "";
-    }
+    setNotice("Сохраняю изменения...");
+    setCategorySaving(true);
 
-    rerender();
-    setNotice("Успешно.");
+    try {
+      if (categoryKey) {
+        await catalogApi.updateCategory(categoryKey, payload);
+        state.selectedCategoryKey = categoryKey;
+      } else {
+        await catalogApi.addCategory(payload);
+        const created = getCategories().find((category) => !beforeKeys.has(category.key)) || null;
+        state.selectedCategoryKey = created?.key || "";
+      }
+
+      rerender();
+      setNotice("Успешно.");
+    } catch (error) {
+      setNotice(getErrorMessage(error), "error");
+      rerender();
+    } finally {
+      setCategorySaving(false);
+    }
   });
 
   adminLogoutButton?.addEventListener("click", async () => {
@@ -813,8 +1312,10 @@ const initAdmin = async () => {
   renderMenuGroups();
   initMobileMenu();
 
+  state.selectedBannerId = getBanners()[0]?.id || "";
   fillProductCategoryOptions(getCategories()[0]?.key || "");
   resetProductEditor({ preserveCategory: true });
+  renderBannerEditor();
   resetCategoryEditor();
   initEditorActions();
   rerender();
