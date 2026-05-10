@@ -26,9 +26,7 @@ except ModuleNotFoundError:
 
 
 APP_DIR = Path(__file__).resolve().parent
-DATA_DIR = APP_DIR / "data"
-LEGACY_STORE_FILE = DATA_DIR / "store.json"
-LEGACY_SQLITE_FILE = DATA_DIR / "exclusive.sqlite3"
+LOCAL_STORE_FILE = Path(os.getenv("EXCLUSIVE_LOCAL_STORE_FILE", str(APP_DIR / "store.local.json"))).resolve()
 UPLOADS_DIR = Path(os.getenv("EXCLUSIVE_UPLOADS_DIR", str(APP_DIR.parent / "uploads"))).resolve()
 PRODUCT_UPLOADS_DIR = UPLOADS_DIR / "products"
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://exclusive:exclusive@127.0.0.1:5432/exclusive")
@@ -1131,13 +1129,8 @@ class ApiHandler(BaseHTTPRequestHandler):
 
 
 def main():
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    database = SiteDatabase(
-        DATABASE_URL,
-        legacy_sqlite_path=LEGACY_SQLITE_FILE,
-        legacy_store_path=LEGACY_STORE_FILE,
-    )
-    store = Store(LEGACY_STORE_FILE, DEMO_PHONE, database=database, admin_phones=ADMIN_PHONES)
+    database = SiteDatabase(DATABASE_URL)
+    store = Store(LOCAL_STORE_FILE, DEMO_PHONE, database=database, admin_phones=ADMIN_PHONES)
     bot = TelegramBot(BOT_TOKEN, BOT_USERNAME, MANAGER_CHAT_IDS, MANAGER_USERNAMES, store)
 
     ApiHandler.store = store

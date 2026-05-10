@@ -16,18 +16,12 @@ COPY catalog ./catalog
 COPY favorites ./favorites
 COPY hit ./hit
 COPY home ./home
-COPY legal ./legal
 COPY new ./new
 COPY product ./product
 COPY product-alt ./product-alt
 COPY privacy.pdf ./privacy.pdf
-COPY ["фото", "./фото"]
 COPY shared ./shared
 COPY uploads ./uploads
-COPY ["главная страница", "./главная страница"]
-COPY ["каталог", "./каталог"]
-COPY ["страница товара", "./страница товара"]
-COPY ["товар", "./товар"]
 
 RUN find /usr/share/nginx/html -type d -exec chmod 755 {} \; \
   && find /usr/share/nginx/html -type f -exec chmod 644 {} \;

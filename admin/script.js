@@ -165,12 +165,7 @@ const normalizeImageSource = (value) => {
     return raw.slice(uploadsPathIndex);
   }
 
-  const photoPathIndex = raw.indexOf("/фото/");
-  if (photoPathIndex >= 0) {
-    return raw.slice(photoPathIndex);
-  }
-
-  if (raw.startsWith("uploads/") || raw.startsWith("фото/")) {
+  if (raw.startsWith("uploads/")) {
     return `/${raw}`;
   }
 

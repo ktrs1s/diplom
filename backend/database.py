@@ -1,7 +1,5 @@
 import json
-import sqlite3
 import threading
-from pathlib import Path
 
 import psycopg
 from psycopg.rows import dict_row
@@ -25,16 +23,13 @@ def _json_loads(value, fallback):
 
 
 class SiteDatabase:
-    def __init__(self, dsn, legacy_sqlite_path=None, legacy_store_path=None):
+    def __init__(self, dsn):
         self.dsn = str(dsn or "").strip()
         if not self.dsn:
             raise ValueError("DATABASE_URL is required for PostgreSQL connection.")
 
-        self.legacy_sqlite_path = Path(legacy_sqlite_path) if legacy_sqlite_path else None
-        self.legacy_store_path = Path(legacy_store_path) if legacy_store_path else None
         self.lock = threading.RLock()
         self._ensure_schema()
-        self.migrate_legacy_sources()
 
     def _connect(self):
         return psycopg.connect(self.dsn, row_factory=dict_row)
@@ -762,107 +757,3 @@ class SiteDatabase:
             "managerChats": manager_chats or dict(seeded.get("managerChats") or {}),
             "counters": counters or dict(seeded.get("counters") or {"orders": 1}),
         }
-
-    def _legacy_sqlite_has_table(self, connection, table_name):
-        row = connection.execute(
-            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
-            (table_name,),
-        ).fetchone()
-        return bool(row)
-
-    def _import_legacy_sqlite(self):
-        if not self.legacy_sqlite_path or not self.legacy_sqlite_path.exists():
-            return False
-
-        imported = False
-        connection = sqlite3.connect(self.legacy_sqlite_path, check_same_thread=False)
-        connection.row_factory = sqlite3.Row
-
-        try:
-            if self._legacy_sqlite_has_table(connection, "categories") and self._legacy_sqlite_has_table(connection, "products"):
-                categories = [
-                    {
-                        "key": row["key"],
-                        "title": row["title"],
-                        "description": row["description"],
-                        "palette": [row["palette_start"], row["palette_end"]],
-                        "image": row["image"],
-                        "showOnHome": bool(row["show_on_home"]),
-                        "createdAt": int(row["created_at"] or 0),
-                    }
-                    for row in connection.execute(
-                        """
-                        SELECT key, title, description, palette_start, palette_end, image, show_on_home, created_at
-                        FROM categories
-                        ORDER BY created_at ASC, title ASC
-                        """
-                    ).fetchall()
-                ]
-
-                products = [
-                    {
-                        "id": row["id"],
-                        "categoryKey": row["category_key"],
-                        "subKey": row["sub_key"],
-                        "subTitle": row["sub_title"],
-                        "title": row["title"],
-                        "article": row["article"],
-                        "priceValue": int(row["price_value"] or 0),
-                        "sizes": _json_loads(row["sizes_json"], []),
-                        "colors": _json_loads(row["colors_json"], []),
-                        "palette": [row["palette_start"], row["palette_end"]],
-                        "label": row["label"],
-                        "image": row["image"],
-                        "gallery": _json_loads(row["gallery_json"], []),
-                        "description": row["description"],
-                        "composition": row["composition"],
-                        "care": _json_loads(row["care_json"], []),
-                        "features": _json_loads(row["features_json"], []),
-                        "sizeTable": _json_loads(row["size_table_json"], []),
-                        "createdAt": int(row["created_at"] or 0),
-                        "orderIndex": int(row["order_index"] or 0),
-                        "isFeatured": bool(row["is_featured"]),
-                    }
-                    for row in connection.execute(
-                        """
-                        SELECT
-                          id, category_key, sub_key, sub_title, title, article, price_value, sizes_json, colors_json,
-                          palette_start, palette_end, label, image, gallery_json, description, composition, care_json,
-                          features_json, size_table_json, created_at, order_index, is_featured
-                        FROM products
-                        ORDER BY order_index ASC, created_at ASC, title ASC
-                        """
-                    ).fetchall()
-                ]
-
-                if categories or products:
-                    self.replace_catalog(categories, products)
-                    imported = True
-        finally:
-            connection.close()
-
-        return imported
-
-    def _import_legacy_store_json(self):
-        if not self.legacy_store_path or not self.legacy_store_path.exists():
-            return False
-
-        try:
-            payload = json.loads(self.legacy_store_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            return False
-
-        if not isinstance(payload, dict):
-            return False
-
-        self.sync_from_json_store(payload)
-        return True
-
-    def migrate_legacy_sources(self):
-        with self.lock:
-            if self.has_any_data():
-                return False
-
-        imported_catalog = self._import_legacy_sqlite()
-        imported_store = self._import_legacy_store_json()
-        return imported_catalog or imported_store

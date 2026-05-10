@@ -4,10 +4,7 @@ const FALLBACK_RETURN_URL = "/catalog/";
 const catalogApi = window.ExclusiveCatalog;
 const favoritesApi = window.ExclusiveFavorites;
 const params = new URLSearchParams(window.location.search);
-const currentTemplateBase =
-  window.location.pathname.includes("/product-alt/") || window.location.pathname.includes("/товар/")
-    ? "/product-alt/"
-    : "/product/";
+const currentTemplateBase = window.location.pathname.includes("/product-alt/") ? "/product-alt/" : "/product/";
 
 const menuGroupsNode = document.getElementById("mobile-menu-groups");
 const currentYearNode = document.getElementById("current-year");

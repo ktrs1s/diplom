@@ -4,6 +4,6 @@
 .pycache/
 **/__pycache__/
 backend/backend.log
-backend/data/*.sqlite3-shm
-backend/data/*.sqlite3-wal
+backend/*.log
+backend/store.local.json
 .env
