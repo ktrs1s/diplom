@@ -1,5 +1,4 @@
 const CART_PAGE_URL = "../cart/index.html";
-const DEFAULT_TELEGRAM_URL = "https://t.me/";
 const FALLBACK_RETURN_URL = "../каталог/index.html?page=outerwear";
 const params = new URLSearchParams(window.location.search);
 
@@ -581,9 +580,6 @@ const mountProduct = () => {
   syncFavoriteState();
   syncCartState();
 
-  document.querySelectorAll("[data-telegram-link]").forEach((link) => {
-    link.setAttribute("href", DEFAULT_TELEGRAM_URL);
-  });
 };
 
 const openModal = () => {
