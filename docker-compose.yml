@@ -30,7 +30,6 @@ services:
       - "3011:80"
     restart: unless-stopped
     volumes:
-      - ./фото:/usr/share/nginx/html/фото
       - ./uploads:/usr/share/nginx/html/uploads
 
   api:
@@ -55,7 +54,6 @@ services:
       - "9000:9000"
     restart: unless-stopped
     volumes:
-      - ./backend/data:/app/backend/data
       - ./uploads:/app/uploads
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9000/api/health', timeout=5)"]
